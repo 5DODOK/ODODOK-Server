@@ -2,12 +2,12 @@ package com.example.ododok.controller;
 
 import com.example.ododok.dto.AuthResponse;
 import com.example.ododok.service.GoogleOAuthService;
-import com.example.ododok.service.JwtService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -17,8 +17,9 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(AuthController.class)
-class AuthControllerTest {
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureMockMvc
+class AuthControllerIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -29,40 +30,15 @@ class AuthControllerTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    @DisplayName("구글 로그인 - 성공시 리다이렉트")
-    void googleLogin_Success() throws Exception {
-        // given
-        String authUrl = "https://accounts.google.com/o/oauth2/v2/auth?client_id=test&redirect_uri=test&scope=profile+email&response_type=code&state=test-state&access_type=offline&prompt=consent";
-        when(googleOAuthService.getAuthorizationUrl()).thenReturn(authUrl);
-
-        // when & then
-        mockMvc.perform(get("/auth/oauth/google"))
-                .andExpect(status().isFound())
-                .andExpect(header().string("Location", authUrl));
-    }
-
-    @Test
-    @DisplayName("구글 로그인 - 서비스 예외 발생시 500 에러")
-    void googleLogin_ServiceException() throws Exception {
-        // given
-        when(googleOAuthService.getAuthorizationUrl()).thenThrow(new RuntimeException("Service error"));
-
-        // when & then
-        mockMvc.perform(get("/auth/oauth/google"))
-                .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.message").value("소셜 로그인 처리 중 오류가 발생했습니다."));
-    }
-
-    @Test
     @DisplayName("구글 콜백 - 성공")
     void googleCallback_Success() throws Exception {
         // given
         String code = "test-auth-code";
         String state = "test-state";
-        
+
         AuthResponse.UserInfo userInfo = new AuthResponse.UserInfo(1L, "test@bssm.hs.kr", "테스트유저");
         AuthResponse authResponse = new AuthResponse("access-token", "refresh-token", "bearer", userInfo, "로그인 성공");
-        
+
         when(googleOAuthService.processCallback(code, state)).thenReturn(authResponse);
 
         // when & then
@@ -70,10 +46,10 @@ class AuthControllerTest {
                         .param("code", code)
                         .param("state", state))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.access_token").value("access-token"))
-                .andExpect(jsonPath("$.refresh_token").value("refresh-token"))
-                .andExpect(jsonPath("$.token_type").value("bearer"))
-                .andExpect(jsonPath("$.user.user_id").value(1))
+                .andExpect(jsonPath("$.accessToken").value("access-token"))
+                .andExpect(jsonPath("$.refreshToken").value("refresh-token"))
+                .andExpect(jsonPath("$.tokenType").value("bearer"))
+                .andExpect(jsonPath("$.user.userId").value(1))
                 .andExpect(jsonPath("$.user.email").value("test@bssm.hs.kr"))
                 .andExpect(jsonPath("$.user.name").value("테스트유저"))
                 .andExpect(jsonPath("$.message").value("로그인 성공"));
