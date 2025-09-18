@@ -10,4 +10,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByOauthProviderAndOauthId(String oauthProvider, String oauthId);
     Optional<User> findByEmail(String email);
     boolean existsByOauthProviderAndOauthId(String oauthProvider, String oauthId);
+
+    // Search methods
+    org.springframework.data.domain.Page<User> findByUsernameContainingIgnoreCase(
+            String username,
+            org.springframework.data.domain.Pageable pageable);
 }

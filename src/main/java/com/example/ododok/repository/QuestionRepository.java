@@ -24,4 +24,54 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
             @Param("year") Integer year,
             @Param("companyId") Long companyId,
             @Param("categoryId") Long categoryId);
+
+    // Search methods
+    @Query("SELECT q FROM Question q WHERE (q.isPublic = true OR q.createdBy = :userId)")
+    org.springframework.data.domain.Page<Question> findAllByIsPublicTrueOrCreatedBy(
+            @Param("isPublic") boolean isPublic,
+            @Param("userId") Long userId,
+            org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT q FROM Question q WHERE " +
+           "(LOWER(q.question) LIKE :searchTerm OR LOWER(q.content) LIKE :searchTerm OR LOWER(q.title) LIKE :searchTerm) " +
+           "AND (q.isPublic = true OR q.createdBy = :userId)")
+    org.springframework.data.domain.Page<Question> findByText(
+            @Param("searchTerm") String searchTerm,
+            @Param("userId") Long userId,
+            org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT q FROM Question q WHERE " +
+           "(LOWER(q.question) LIKE :searchTerm OR LOWER(q.content) LIKE :searchTerm OR LOWER(q.title) LIKE :searchTerm) " +
+           "AND q.difficulty = :difficulty " +
+           "AND (q.isPublic = true OR q.createdBy = :userId)")
+    org.springframework.data.domain.Page<Question> findByTextAndDifficulty(
+            @Param("searchTerm") String searchTerm,
+            @Param("difficulty") Integer difficulty,
+            @Param("userId") Long userId,
+            org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT q FROM Question q WHERE " +
+           "(LOWER(q.question) LIKE :searchTerm OR LOWER(q.content) LIKE :searchTerm OR LOWER(q.title) LIKE :searchTerm) " +
+           "AND q.categoryId = :categoryId " +
+           "AND (q.isPublic = true OR q.createdBy = :userId)")
+    org.springframework.data.domain.Page<Question> findByTextAndCategory(
+            @Param("searchTerm") String searchTerm,
+            @Param("categoryId") Long categoryId,
+            @Param("userId") Long userId,
+            org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT q FROM Question q WHERE " +
+           "(LOWER(q.question) LIKE :searchTerm OR LOWER(q.content) LIKE :searchTerm OR LOWER(q.title) LIKE :searchTerm) " +
+           "AND q.difficulty = :difficulty " +
+           "AND q.categoryId = :categoryId " +
+           "AND (q.isPublic = true OR q.createdBy = :userId)")
+    org.springframework.data.domain.Page<Question> findByTextAndDifficultyAndCategory(
+            @Param("searchTerm") String searchTerm,
+            @Param("difficulty") Integer difficulty,
+            @Param("categoryId") Long categoryId,
+            @Param("userId") Long userId,
+            org.springframework.data.domain.Pageable pageable);
+
+    // Count methods for facets
+    int countByDifficulty(Integer difficulty);
 }

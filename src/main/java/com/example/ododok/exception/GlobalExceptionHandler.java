@@ -84,6 +84,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(errorResponse);
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException e) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                "유효하지 않은 쿼리 파라미터입니다.",
+                "INVALID_PARAMETER"
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception e) {
         log.error("Unexpected error occurred", e);
@@ -91,6 +101,8 @@ public class GlobalExceptionHandler {
         String message = "서버 내부 오류가 발생했습니다.";
         if (e.getMessage() != null && e.getMessage().contains("질문")) {
             message = "질문 처리 중 오류가 발생했습니다.";
+        } else if (e.getMessage() != null && e.getMessage().contains("검색")) {
+            message = "검색 처리 중 오류가 발생했습니다.";
         }
 
         ErrorResponse errorResponse = new ErrorResponse(
@@ -116,7 +128,7 @@ public class GlobalExceptionHandler {
             case "FK_NOT_FOUND", "INVALID_DIFFICULTY_LABEL", "REQUIRED_FIELD_MISSING",
                  "FIELD_TOO_LONG", "INVALID_YEAR_FORMAT", "MUTUAL_EXCLUSION_VIOLATION",
                  "INVALID_ID_FORMAT", "INVALID_DIFFICULTY", "INVALID_TITLE", "TOO_MANY_TAGS",
-                 "TAG_TOO_LONG" -> HttpStatus.UNPROCESSABLE_ENTITY;
+                 "TAG_TOO_LONG", "INVALID_SORT", "INVALID_TYPE" -> HttpStatus.UNPROCESSABLE_ENTITY;
             default -> HttpStatus.INTERNAL_SERVER_ERROR;
         };
     }
