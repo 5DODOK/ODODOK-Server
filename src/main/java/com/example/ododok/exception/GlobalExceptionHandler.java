@@ -109,7 +109,7 @@ public class GlobalExceptionHandler {
         return switch (errorCode) {
             case "HEADER_MISMATCH", "INVALID_CSV_FORMAT", "EMPTY_FILE" -> HttpStatus.BAD_REQUEST;
             case "USER_NOT_FOUND" -> HttpStatus.UNAUTHORIZED;
-            case "COMPANY_NOT_FOUND", "CATEGORY_NOT_FOUND" -> HttpStatus.NOT_FOUND;
+            case "COMPANY_NOT_FOUND", "CATEGORY_NOT_FOUND", "QUESTION_NOT_FOUND" -> HttpStatus.NOT_FOUND;
             case "DUPLICATE_QUESTION" -> HttpStatus.CONFLICT;
             case "FILE_SIZE_EXCEEDED", "TOO_MANY_ROWS" -> HttpStatus.PAYLOAD_TOO_LARGE;
             case "INVALID_CONTENT_TYPE" -> HttpStatus.UNSUPPORTED_MEDIA_TYPE;

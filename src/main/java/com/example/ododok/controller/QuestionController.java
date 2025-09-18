@@ -42,6 +42,23 @@ public class QuestionController {
         }
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteQuestion(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String authHeader) {
+
+        try {
+            Long userId = extractUserIdFromToken(authHeader);
+            questionService.deleteQuestion(id, userId);
+
+            return ResponseEntity.noContent().build();
+
+        } catch (Exception e) {
+            log.error("Question deletion failed for id: {}", id, e);
+            throw e;
+        }
+    }
+
     private Long extractUserIdFromToken(String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw new RuntimeException("Authorization 헤더가 필요합니다.");

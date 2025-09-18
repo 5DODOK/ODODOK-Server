@@ -303,4 +303,67 @@ class QuestionServiceTest {
         questionService.createQuestion(requestHard, 1L);
         verify(questionRepository).save(argThat(question -> question.getDifficulty() == 3));
     }
+
+    @Test
+    void deleteQuestion_Success() {
+        // Given
+        Question existingQuestion = new Question();
+        existingQuestion.setId(1L);
+        existingQuestion.setQuestion("삭제할 질문");
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(adminUser));
+        when(questionRepository.findById(1L)).thenReturn(Optional.of(existingQuestion));
+
+        // When
+        questionService.deleteQuestion(1L, 1L);
+
+        // Then
+        verify(questionRepository).delete(existingQuestion);
+    }
+
+    @Test
+    void deleteQuestion_AccessDenied_RegularUser() {
+        // Given
+        when(userRepository.findById(2L)).thenReturn(Optional.of(regularUser));
+
+        // When & Then
+        assertThrows(AccessDeniedException.class, () -> {
+            questionService.deleteQuestion(1L, 2L);
+        });
+
+        verify(questionRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteQuestion_UserNotFound() {
+        // Given
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // When & Then
+        CsvProcessingException exception = assertThrows(CsvProcessingException.class, () -> {
+            questionService.deleteQuestion(1L, 999L);
+        });
+
+        assertEquals("사용자를 찾을 수 없습니다.", exception.getMessage());
+        assertEquals("USER_NOT_FOUND", exception.getErrorCode());
+
+        verify(questionRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteQuestion_QuestionNotFound() {
+        // Given
+        when(userRepository.findById(1L)).thenReturn(Optional.of(adminUser));
+        when(questionRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // When & Then
+        CsvProcessingException exception = assertThrows(CsvProcessingException.class, () -> {
+            questionService.deleteQuestion(999L, 1L);
+        });
+
+        assertEquals("대상을 찾을 수 없습니다.", exception.getMessage());
+        assertEquals("QUESTION_NOT_FOUND", exception.getErrorCode());
+
+        verify(questionRepository, never()).delete(any());
+    }
 }

@@ -110,6 +110,20 @@ public class QuestionService {
         }
     }
 
+    public void deleteQuestion(Long id, Long userId) {
+        // 사용자 권한 확인
+        validateUser(userId);
+
+        // 질문 존재 확인
+        Question question = questionRepository.findById(id)
+                .orElseThrow(() -> new CsvProcessingException("대상을 찾을 수 없습니다.", "QUESTION_NOT_FOUND"));
+
+        // 하드 삭제 수행
+        questionRepository.delete(question);
+
+        log.info("Question deleted successfully: id={}, deletedBy={}", id, userId);
+    }
+
     private QuestionResponse mapToResponse(Question question) {
         return new QuestionResponse(
                 question.getId(),
