@@ -146,7 +146,7 @@ public class SearchService {
         if (request.getQ().isEmpty()) {
             userPage = userRepository.findAll(pageable);
         } else {
-            String searchTerm = "%" + request.getQ().toLowerCase() + "%";
+            String searchTerm = request.getQ().toLowerCase();
             userPage = userRepository.findByUsernameContainingIgnoreCase(searchTerm, pageable);
         }
 

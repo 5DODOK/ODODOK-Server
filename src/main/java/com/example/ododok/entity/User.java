@@ -22,7 +22,12 @@ public class User {
     
     @Column(nullable = false)
     private String name;
-    
+
+    @Column(unique = true)
+    private String username;
+
+    private String displayName;
+
     @Column(nullable = false)
     private String oauthProvider;
     
