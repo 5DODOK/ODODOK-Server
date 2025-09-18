@@ -72,6 +72,47 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
             @Param("userId") Long userId,
             org.springframework.data.domain.Pageable pageable);
 
+    // New search methods with year and company filters
+    @Query("SELECT q FROM Question q WHERE " +
+           "(:searchTerm = '' OR LOWER(q.question) LIKE :searchTerm OR LOWER(q.content) LIKE :searchTerm OR LOWER(q.title) LIKE :searchTerm) " +
+           "AND (:year IS NULL OR q.year = :year) " +
+           "AND (:companyId IS NULL OR q.companyId = :companyId) " +
+           "AND (q.isPublic = true OR q.createdBy = :userId)")
+    org.springframework.data.domain.Page<Question> findByFilters(
+            @Param("searchTerm") String searchTerm,
+            @Param("year") Integer year,
+            @Param("companyId") Long companyId,
+            @Param("userId") Long userId,
+            org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT q FROM Question q WHERE " +
+           "(:searchTerm = '' OR LOWER(q.question) LIKE :searchTerm OR LOWER(q.content) LIKE :searchTerm OR LOWER(q.title) LIKE :searchTerm) " +
+           "AND (:difficulty IS NULL OR q.difficulty = :difficulty) " +
+           "AND (:year IS NULL OR q.year = :year) " +
+           "AND (:companyId IS NULL OR q.companyId = :companyId) " +
+           "AND (:categoryId IS NULL OR q.categoryId = :categoryId) " +
+           "AND (q.isPublic = true OR q.createdBy = :userId)")
+    org.springframework.data.domain.Page<Question> findByAllFilters(
+            @Param("searchTerm") String searchTerm,
+            @Param("difficulty") Integer difficulty,
+            @Param("year") Integer year,
+            @Param("companyId") Long companyId,
+            @Param("categoryId") Long categoryId,
+            @Param("userId") Long userId,
+            org.springframework.data.domain.Pageable pageable);
+
     // Count methods for facets
     int countByDifficulty(Integer difficulty);
+
+    @Query("SELECT COUNT(q) FROM Question q WHERE q.year = :year")
+    int countByYear(@Param("year") Integer year);
+
+    @Query("SELECT COUNT(q) FROM Question q WHERE q.companyId = :companyId")
+    int countByCompanyId(@Param("companyId") Long companyId);
+
+    @Query("SELECT DISTINCT q.year FROM Question q WHERE q.year IS NOT NULL ORDER BY q.year DESC")
+    java.util.List<Integer> findDistinctYears();
+
+    @Query("SELECT DISTINCT q.companyId FROM Question q WHERE q.companyId IS NOT NULL")
+    java.util.List<Long> findDistinctCompanyIds();
 }

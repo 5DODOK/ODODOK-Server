@@ -29,8 +29,10 @@ public class SearchResponse {
         private String question;
         private String snippet;
         private Integer difficulty;
+        private String difficultyLabel; // EASY, MEDIUM, HARD
         private Integer year;
         private Long companyId;
+        private String companyName;
         private Long categoryId;
         private Double score;
         private LocalDateTime createdAt;

@@ -31,6 +31,9 @@ public class SearchController {
             @RequestParam(value = "types", defaultValue = "question,user") String types,
             @RequestParam(value = "difficulty", required = false) String difficulty,
             @RequestParam(value = "category_id", required = false) Long categoryId,
+            @RequestParam(value = "year", required = false) Integer year,
+            @RequestParam(value = "company_id", required = false) Long companyId,
+            @RequestParam(value = "company_name", required = false) String companyName,
             @RequestParam(value = "highlight", defaultValue = "true") boolean highlight,
             @RequestHeader("Authorization") String authHeader) {
 
@@ -46,6 +49,9 @@ public class SearchController {
             request.setTypes(parseTypes(types));
             request.setDifficulty(difficulty);
             request.setCategoryId(categoryId);
+            request.setYear(year);
+            request.setCompanyId(companyId);
+            request.setCompanyName(companyName);
             request.setHighlight(highlight);
 
             // 요청 파라미터 검증
@@ -123,6 +129,21 @@ public class SearchController {
         // 카테고리 ID 검증
         if (request.getCategoryId() != null && request.getCategoryId() < 1) {
             throw new IllegalArgumentException("카테고리 ID는 1 이상이어야 합니다.");
+        }
+
+        // 학년도 검증
+        if (request.getYear() != null && (request.getYear() < 2000 || request.getYear() > 2026)) {
+            throw new IllegalArgumentException("학년도는 2000년에서 2026년 사이여야 합니다.");
+        }
+
+        // 회사 ID 검증
+        if (request.getCompanyId() != null && request.getCompanyId() < 1) {
+            throw new IllegalArgumentException("회사 ID는 1 이상이어야 합니다.");
+        }
+
+        // 회사명 길이 검증
+        if (request.getCompanyName() != null && request.getCompanyName().length() > 100) {
+            throw new IllegalArgumentException("회사명은 최대 100자까지 허용됩니다.");
         }
     }
 }

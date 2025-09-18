@@ -31,5 +31,15 @@ public class SearchRequest {
     @Min(value = 1, message = "카테고리 ID는 1 이상이어야 합니다.")
     private Long categoryId;
 
+    @Min(value = 2000, message = "학년도는 2000년 이상이어야 합니다.")
+    @Max(value = 2026, message = "학년도는 2026년 이하여야 합니다.")
+    private Integer year;
+
+    @Min(value = 1, message = "회사 ID는 1 이상이어야 합니다.")
+    private Long companyId;
+
+    @Size(max = 100, message = "회사명은 최대 100자까지 허용됩니다.")
+    private String companyName;
+
     private boolean highlight = true;
 }
