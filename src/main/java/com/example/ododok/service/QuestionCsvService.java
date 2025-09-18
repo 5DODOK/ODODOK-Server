@@ -58,14 +58,16 @@ public class QuestionCsvService {
     public CsvUploadResponse processCsvFile(MultipartFile file, boolean dryRun, Long userId) {
         validateUser(userId);
         validateFile(file);
+        validateHeaders(file);
 
         try (Reader reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8)) {
             List<QuestionCsvRow> rows = parseCsvFile(reader);
-            validateHeaders(file);
             validateRowCount(rows);
 
             return processRows(rows, dryRun, userId);
 
+        } catch (CsvProcessingException e) {
+            throw e;
         } catch (Exception e) {
             log.error("CSV processing failed", e);
             throw new CsvProcessingException("CSV 파일 처리 중 오류가 발생했습니다.", "CSV_PROCESSING_ERROR");
@@ -116,15 +118,17 @@ public class QuestionCsvService {
         try (Reader reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8)) {
             Scanner scanner = new Scanner(reader);
             if (scanner.hasNextLine()) {
-                String headerLine = scanner.nextLine().toLowerCase().trim();
+                String headerLine = scanner.nextLine().trim();
 
-                boolean isValidCombination = VALID_HEADER_COMBINATIONS.stream()
-                        .anyMatch(validCombination ->
-                            Arrays.equals(
-                                headerLine.split(","),
-                                validCombination.split(",")
-                            )
-                        );
+                // Split and clean each header
+                String[] headers = Arrays.stream(headerLine.split(","))
+                        .map(String::trim)
+                        .map(String::toLowerCase)
+                        .toArray(String[]::new);
+
+                String normalizedHeader = String.join(",", headers);
+
+                boolean isValidCombination = VALID_HEADER_COMBINATIONS.contains(normalizedHeader);
 
                 if (!isValidCombination) {
                     throw new CsvProcessingException("CSV 헤더가 사양과 일치하지 않습니다.", "HEADER_MISMATCH");
