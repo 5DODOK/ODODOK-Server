@@ -1,6 +1,7 @@
 package com.example.ododok.controller;
 
 import com.example.ododok.dto.QuestionCreateRequest;
+import com.example.ododok.dto.QuestionUpdateRequest;
 import com.example.ododok.dto.QuestionResponse;
 import com.example.ododok.service.JwtService;
 import com.example.ododok.service.QuestionService;
@@ -38,6 +39,24 @@ public class QuestionController {
 
         } catch (Exception e) {
             log.error("Question creation failed", e);
+            throw e;
+        }
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<QuestionResponse> updateQuestion(
+            @PathVariable Long id,
+            @Valid @RequestBody QuestionUpdateRequest request,
+            @RequestHeader("Authorization") String authHeader) {
+
+        try {
+            Long userId = extractUserIdFromToken(authHeader);
+            QuestionResponse response = questionService.updateQuestion(id, request, userId);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Question update failed for id: {}", id, e);
             throw e;
         }
     }

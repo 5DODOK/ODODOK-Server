@@ -13,6 +13,8 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
 
     Optional<Question> findByQuestion(String question);
 
+    Optional<Question> findByTitle(String title);
+
     @Query("SELECT q FROM Question q WHERE q.question = :question AND " +
            "(:year IS NULL AND q.year IS NULL OR q.year = :year) AND " +
            "(:companyId IS NULL AND q.companyId IS NULL OR q.companyId = :companyId) AND " +

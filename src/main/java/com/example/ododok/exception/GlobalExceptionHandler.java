@@ -110,12 +110,13 @@ public class GlobalExceptionHandler {
             case "HEADER_MISMATCH", "INVALID_CSV_FORMAT", "EMPTY_FILE" -> HttpStatus.BAD_REQUEST;
             case "USER_NOT_FOUND" -> HttpStatus.UNAUTHORIZED;
             case "COMPANY_NOT_FOUND", "CATEGORY_NOT_FOUND", "QUESTION_NOT_FOUND" -> HttpStatus.NOT_FOUND;
-            case "DUPLICATE_QUESTION" -> HttpStatus.CONFLICT;
+            case "DUPLICATE_QUESTION", "DUPLICATE_TITLE" -> HttpStatus.CONFLICT;
             case "FILE_SIZE_EXCEEDED", "TOO_MANY_ROWS" -> HttpStatus.PAYLOAD_TOO_LARGE;
             case "INVALID_CONTENT_TYPE" -> HttpStatus.UNSUPPORTED_MEDIA_TYPE;
             case "FK_NOT_FOUND", "INVALID_DIFFICULTY_LABEL", "REQUIRED_FIELD_MISSING",
                  "FIELD_TOO_LONG", "INVALID_YEAR_FORMAT", "MUTUAL_EXCLUSION_VIOLATION",
-                 "INVALID_ID_FORMAT", "INVALID_DIFFICULTY" -> HttpStatus.UNPROCESSABLE_ENTITY;
+                 "INVALID_ID_FORMAT", "INVALID_DIFFICULTY", "INVALID_TITLE", "TOO_MANY_TAGS",
+                 "TAG_TOO_LONG" -> HttpStatus.UNPROCESSABLE_ENTITY;
             default -> HttpStatus.INTERNAL_SERVER_ERROR;
         };
     }
