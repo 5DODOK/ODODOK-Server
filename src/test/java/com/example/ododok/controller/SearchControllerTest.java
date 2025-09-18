@@ -87,7 +87,7 @@ class SearchControllerTest {
 
         // When
         ResponseEntity<SearchResponse> response = searchController.search(
-                "자바", 1, 20, "rel", "question,user", null, null, true,
+                "자바", 1, 20, "rel", "question,user", null, null, null, null, null, true,
                 "Bearer valid-token"
         );
 
@@ -122,7 +122,7 @@ class SearchControllerTest {
 
         // When
         ResponseEntity<SearchResponse> response = searchController.search(
-                "", 1, 20, "new", "question", null, null, true,
+                "", 1, 20, "new", "question", null, null, null, null, null, true,
                 "Bearer valid-token"
         );
 
@@ -140,7 +140,7 @@ class SearchControllerTest {
 
         // When
         ResponseEntity<SearchResponse> response = searchController.search(
-                "스프링", 2, 10, "old", "question", "HARD", 5L, false,
+                "스프링", 2, 10, "old", "question", "HARD", 5L, null, null, null, false,
                 "Bearer valid-token"
         );
 
@@ -168,7 +168,7 @@ class SearchControllerTest {
 
         // When
         ResponseEntity<SearchResponse> response = searchController.search(
-                "테스트", 1, 20, "rel", "question,user", null, null, true,
+                "테스트", 1, 20, "rel", "question,user", null, null, null, null, null, true,
                 "Bearer valid-token"
         );
 
@@ -186,7 +186,7 @@ class SearchControllerTest {
     void search_InvalidAuthHeader() {
         // When & Then
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            searchController.search("test", 1, 20, "rel", "question", null, null, true, null);
+            searchController.search("test", 1, 20, "rel", "question", null, null, null, null, null, true, null);
         });
 
         assertEquals("Authorization 헤더가 필요합니다.", exception.getMessage());
@@ -197,7 +197,7 @@ class SearchControllerTest {
     void search_InvalidBearerToken() {
         // When & Then
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            searchController.search("test", 1, 20, "rel", "question", null, null, true, "Invalid-token");
+            searchController.search("test", 1, 20, "rel", "question", null, null, null, null, null, true, "Invalid-token");
         });
 
         assertEquals("Authorization 헤더가 필요합니다.", exception.getMessage());
@@ -211,7 +211,7 @@ class SearchControllerTest {
 
         // When & Then
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            searchController.search("test", 0, 20, "rel", "question", null, null, true, "Bearer valid-token");
+            searchController.search("test", 0, 20, "rel", "question", null, null, null, null, null, true, "Bearer valid-token");
         });
 
         assertEquals("페이지는 1 이상이어야 합니다.", exception.getMessage());
@@ -225,7 +225,7 @@ class SearchControllerTest {
 
         // When & Then
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            searchController.search("test", 1, 0, "rel", "question", null, null, true, "Bearer valid-token");
+            searchController.search("test", 1, 0, "rel", "question", null, null, null, null, null, true, "Bearer valid-token");
         });
 
         assertEquals("크기는 1~100 사이여야 합니다.", exception.getMessage());
@@ -239,7 +239,7 @@ class SearchControllerTest {
 
         // When & Then
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            searchController.search("test", 1, 101, "rel", "question", null, null, true, "Bearer valid-token");
+            searchController.search("test", 1, 101, "rel", "question", null, null, null, null, null, true, "Bearer valid-token");
         });
 
         assertEquals("크기는 1~100 사이여야 합니다.", exception.getMessage());
@@ -254,7 +254,7 @@ class SearchControllerTest {
 
         // When & Then
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            searchController.search(longQuery, 1, 20, "rel", "question", null, null, true, "Bearer valid-token");
+            searchController.search(longQuery, 1, 20, "rel", "question", null, null, null, null, null, true, "Bearer valid-token");
         });
 
         assertEquals("검색어는 최대 200자까지 허용됩니다.", exception.getMessage());
@@ -268,7 +268,7 @@ class SearchControllerTest {
 
         // When & Then
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            searchController.search("test", 1, 20, "invalid", "question", null, null, true, "Bearer valid-token");
+            searchController.search("test", 1, 20, "invalid", "question", null, null, null, null, null, true, "Bearer valid-token");
         });
 
         assertEquals("유효하지 않은 정렬 옵션입니다.", exception.getMessage());
@@ -282,7 +282,7 @@ class SearchControllerTest {
 
         // When & Then
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            searchController.search("test", 1, 20, "rel", "invalid", null, null, true, "Bearer valid-token");
+            searchController.search("test", 1, 20, "rel", "invalid", null, null, null, null, null, true, "Bearer valid-token");
         });
 
         assertEquals("유효하지 않은 타입입니다: invalid", exception.getMessage());
@@ -296,7 +296,7 @@ class SearchControllerTest {
 
         // When & Then
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            searchController.search("test", 1, 20, "rel", "question", "INVALID", null, true, "Bearer valid-token");
+            searchController.search("test", 1, 20, "rel", "question", "INVALID", null, null, null, null, true, "Bearer valid-token");
         });
 
         assertEquals("유효하지 않은 난이도입니다.", exception.getMessage());
@@ -310,7 +310,7 @@ class SearchControllerTest {
 
         // When & Then
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            searchController.search("test", 1, 20, "rel", "question", null, 0L, true, "Bearer valid-token");
+            searchController.search("test", 1, 20, "rel", "question", null, 0L, null, null, null, true, "Bearer valid-token");
         });
 
         assertEquals("카테고리 ID는 1 이상이어야 합니다.", exception.getMessage());
@@ -325,7 +325,7 @@ class SearchControllerTest {
 
         // When
         ResponseEntity<SearchResponse> response = searchController.search(
-                "test", 1, 20, "rel", "", null, null, true, "Bearer valid-token"
+                "test", 1, 20, "rel", "", null, null, null, null, null, true, "Bearer valid-token"
         );
 
         // Then
@@ -346,7 +346,7 @@ class SearchControllerTest {
 
         // When
         ResponseEntity<SearchResponse> response = searchController.search(
-                "test", 1, 20, "rel", " question , user ", null, null, true, "Bearer valid-token"
+                "test", 1, 20, "rel", " question , user ", null, null, null, null, null, true, "Bearer valid-token"
         );
 
         // Then
@@ -368,7 +368,7 @@ class SearchControllerTest {
 
         // When
         ResponseEntity<SearchResponse> response = searchController.search(
-                "", 1, 20, "rel", "question,user", null, null, true, "Bearer valid-token"
+                "", 1, 20, "rel", "question,user", null, null, null, null, null, true, "Bearer valid-token"
         );
 
         // Then
@@ -395,7 +395,7 @@ class SearchControllerTest {
         for (String difficulty : validDifficulties) {
             // When
             ResponseEntity<SearchResponse> response = searchController.search(
-                    "test", 1, 20, "rel", "question", difficulty, null, true, "Bearer valid-token"
+                    "test", 1, 20, "rel", "question", difficulty, null, null, null, null, true, "Bearer valid-token"
             );
 
             // Then
@@ -417,7 +417,7 @@ class SearchControllerTest {
         for (String sort : validSorts) {
             // When
             ResponseEntity<SearchResponse> response = searchController.search(
-                    "test", 1, 20, sort, "question", null, null, true, "Bearer valid-token"
+                    "test", 1, 20, sort, "question", null, null, null, null, null, true, "Bearer valid-token"
             );
 
             // Then
@@ -435,7 +435,7 @@ class SearchControllerTest {
 
         // When
         ResponseEntity<SearchResponse> response = searchController.search(
-                "test", 1, 20, "rel", "question", null, null, false, "Bearer valid-token"
+                "test", 1, 20, "rel", "question", null, null, null, null, null, false, "Bearer valid-token"
         );
 
         // Then

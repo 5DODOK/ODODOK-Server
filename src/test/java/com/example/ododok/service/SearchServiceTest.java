@@ -8,6 +8,7 @@ import com.example.ododok.entity.UserRole;
 import com.example.ododok.exception.CsvProcessingException;
 import com.example.ododok.repository.QuestionRepository;
 import com.example.ododok.repository.UserRepository;
+import com.example.ododok.repository.CompanyRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,6 +35,9 @@ class SearchServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private CompanyRepository companyRepository;
 
     @InjectMocks
     private SearchService searchService;
@@ -83,12 +87,14 @@ class SearchServiceTest {
         request.setTypes(List.of("question"));
 
         Page<Question> questionPage = new PageImpl<>(Arrays.asList(question1, question2));
-        when(questionRepository.findAllByIsPublicTrueOrCreatedBy(eq(true), eq(1L), any(Pageable.class)))
+        when(questionRepository.findByAllFilters(eq(""), isNull(), isNull(), isNull(), isNull(), eq(1L), any(Pageable.class)))
                 .thenReturn(questionPage);
         when(questionRepository.count()).thenReturn(2L);
         when(questionRepository.countByDifficulty(1)).thenReturn(0);
         when(questionRepository.countByDifficulty(2)).thenReturn(1);
         when(questionRepository.countByDifficulty(3)).thenReturn(1);
+        when(questionRepository.findDistinctYears()).thenReturn(java.util.List.of());
+        when(questionRepository.findDistinctCompanyIds()).thenReturn(java.util.List.of());
         when(userRepository.count()).thenReturn(1L);
 
         // When
@@ -126,12 +132,14 @@ class SearchServiceTest {
         request.setHighlight(true);
 
         Page<Question> questionPage = new PageImpl<>(Arrays.asList(question1));
-        when(questionRepository.findByText(eq("%자바%"), eq(1L), any(Pageable.class)))
+        when(questionRepository.findByAllFilters(eq("%자바%"), isNull(), isNull(), isNull(), isNull(), eq(1L), any(Pageable.class)))
                 .thenReturn(questionPage);
         when(questionRepository.count()).thenReturn(2L);
         when(questionRepository.countByDifficulty(1)).thenReturn(0);
         when(questionRepository.countByDifficulty(2)).thenReturn(1);
         when(questionRepository.countByDifficulty(3)).thenReturn(1);
+        when(questionRepository.findDistinctYears()).thenReturn(java.util.List.of());
+        when(questionRepository.findDistinctCompanyIds()).thenReturn(java.util.List.of());
         when(userRepository.count()).thenReturn(1L);
 
         // When
@@ -157,12 +165,14 @@ class SearchServiceTest {
         request.setTypes(List.of("question"));
 
         Page<Question> questionPage = new PageImpl<>(Arrays.asList(question2));
-        when(questionRepository.findByTextAndDifficulty(eq("%스프링%"), eq(3), eq(1L), any(Pageable.class)))
+        when(questionRepository.findByAllFilters(eq("%스프링%"), eq(3), isNull(), isNull(), isNull(), eq(1L), any(Pageable.class)))
                 .thenReturn(questionPage);
         when(questionRepository.count()).thenReturn(2L);
         when(questionRepository.countByDifficulty(1)).thenReturn(0);
         when(questionRepository.countByDifficulty(2)).thenReturn(1);
         when(questionRepository.countByDifficulty(3)).thenReturn(1);
+        when(questionRepository.findDistinctYears()).thenReturn(java.util.List.of());
+        when(questionRepository.findDistinctCompanyIds()).thenReturn(java.util.List.of());
         when(userRepository.count()).thenReturn(1L);
 
         // When
@@ -188,6 +198,8 @@ class SearchServiceTest {
         when(questionRepository.countByDifficulty(1)).thenReturn(0);
         when(questionRepository.countByDifficulty(2)).thenReturn(1);
         when(questionRepository.countByDifficulty(3)).thenReturn(1);
+        when(questionRepository.findDistinctYears()).thenReturn(java.util.List.of());
+        when(questionRepository.findDistinctCompanyIds()).thenReturn(java.util.List.of());
         when(userRepository.count()).thenReturn(1L);
 
         // When
@@ -257,12 +269,14 @@ class SearchServiceTest {
         request.setTypes(List.of("question"));
 
         Page<Question> questionPage = new PageImpl<>(Arrays.asList(question1));
-        when(questionRepository.findByTextAndCategory(eq("%자바%"), eq(1L), eq(1L), any(Pageable.class)))
+        when(questionRepository.findByAllFilters(eq("%자바%"), isNull(), isNull(), isNull(), eq(1L), eq(1L), any(Pageable.class)))
                 .thenReturn(questionPage);
         when(questionRepository.count()).thenReturn(2L);
         when(questionRepository.countByDifficulty(1)).thenReturn(0);
         when(questionRepository.countByDifficulty(2)).thenReturn(1);
         when(questionRepository.countByDifficulty(3)).thenReturn(1);
+        when(questionRepository.findDistinctYears()).thenReturn(java.util.List.of());
+        when(questionRepository.findDistinctCompanyIds()).thenReturn(java.util.List.of());
         when(userRepository.count()).thenReturn(1L);
 
         // When
@@ -271,7 +285,7 @@ class SearchServiceTest {
         // Then
         assertNotNull(response);
         assertEquals(1, response.getResults().size());
-        verify(questionRepository).findByTextAndCategory(eq("%자바%"), eq(1L), eq(1L), any(Pageable.class));
+        verify(questionRepository).findByAllFilters(eq("%자바%"), isNull(), isNull(), isNull(), eq(1L), eq(1L), any(Pageable.class));
     }
 
     @Test
@@ -283,12 +297,14 @@ class SearchServiceTest {
         request.setTypes(List.of("question"));
 
         Page<Question> questionPage = new PageImpl<>(Arrays.asList(question1));
-        when(questionRepository.findByText(eq("%자바%"), eq(1L), any(Pageable.class)))
+        when(questionRepository.findByAllFilters(eq("%자바%"), isNull(), isNull(), isNull(), isNull(), eq(1L), any(Pageable.class)))
                 .thenReturn(questionPage);
         when(questionRepository.count()).thenReturn(2L);
         when(questionRepository.countByDifficulty(1)).thenReturn(0);
         when(questionRepository.countByDifficulty(2)).thenReturn(1);
         when(questionRepository.countByDifficulty(3)).thenReturn(1);
+        when(questionRepository.findDistinctYears()).thenReturn(java.util.List.of());
+        when(questionRepository.findDistinctCompanyIds()).thenReturn(java.util.List.of());
         when(userRepository.count()).thenReturn(1L);
 
         // When
