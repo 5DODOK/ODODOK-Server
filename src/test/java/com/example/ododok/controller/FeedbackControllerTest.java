@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.http.MediaType;
@@ -32,6 +33,7 @@ class FeedbackControllerTest {
     private ObjectMapper objectMapper;
 
     @Test
+    @WithMockUser
     @DisplayName("피드백 제공 - 성공")
     void provideFeedback_Success() throws Exception {
         // given
@@ -58,6 +60,7 @@ class FeedbackControllerTest {
     }
 
     @Test
+    @WithMockUser
     @DisplayName("피드백 제공 - 잘못된 요청 (빈 답변)")
     void provideFeedback_InvalidRequest_EmptyAnswer() throws Exception {
         // given
@@ -74,6 +77,7 @@ class FeedbackControllerTest {
     }
 
     @Test
+    @WithMockUser
     @DisplayName("피드백 제공 - 잘못된 요청 (빈 질문)")
     void provideFeedback_InvalidRequest_EmptyQuestion() throws Exception {
         // given
@@ -90,6 +94,7 @@ class FeedbackControllerTest {
     }
 
     @Test
+    @WithMockUser
     @DisplayName("피드백 제공 - JSON 형식 오류")
     void provideFeedback_InvalidJson() throws Exception {
         // when & then
@@ -100,6 +105,7 @@ class FeedbackControllerTest {
     }
 
     @Test
+    @WithMockUser
     @DisplayName("피드백 제공 - 짧은 답변")
     void provideFeedback_ShortAnswer() throws Exception {
         // given
@@ -126,6 +132,7 @@ class FeedbackControllerTest {
     }
 
     @Test
+    @WithMockUser
     @DisplayName("피드백 제공 - 긴 답변")
     void provideFeedback_LongAnswer() throws Exception {
         // given
