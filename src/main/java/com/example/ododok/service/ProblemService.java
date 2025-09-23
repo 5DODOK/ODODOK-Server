@@ -2,6 +2,7 @@ package com.example.ododok.service;
 
 import com.example.ododok.dto.ProblemSubmissionRequest;
 import com.example.ododok.dto.ProblemSubmissionResponse;
+import com.example.ododok.dto.QuestionListResponse;
 import com.example.ododok.entity.Question;
 import com.example.ododok.entity.User;
 import com.example.ododok.repository.QuestionRepository;
@@ -72,5 +73,45 @@ public class ProblemService {
                 pointsEarned,
                 rank
         );
+    }
+
+    public QuestionListResponse getQuestions(Long categoryId, Long companyId) {
+        log.info("Fetching questions with categoryId: {} and companyId: {}", categoryId, companyId);
+
+        List<Question> questions;
+
+        if (categoryId != null && companyId != null) {
+            // Both filters applied
+            questions = questionRepository.findAll().stream()
+                    .filter(q -> q.getIsPublic())
+                    .filter(q -> categoryId.equals(q.getCategoryId()))
+                    .filter(q -> companyId.equals(q.getCompanyId()))
+                    .collect(Collectors.toList());
+        } else if (categoryId != null) {
+            // Only category filter
+            questions = questionRepository.findAll().stream()
+                    .filter(q -> q.getIsPublic())
+                    .filter(q -> categoryId.equals(q.getCategoryId()))
+                    .collect(Collectors.toList());
+        } else if (companyId != null) {
+            // Only company filter
+            questions = questionRepository.findAll().stream()
+                    .filter(q -> q.getIsPublic())
+                    .filter(q -> companyId.equals(q.getCompanyId()))
+                    .collect(Collectors.toList());
+        } else {
+            // No filters, return all public questions
+            questions = questionRepository.findAll().stream()
+                    .filter(q -> q.getIsPublic())
+                    .collect(Collectors.toList());
+        }
+
+        List<QuestionListResponse.QuestionItem> questionItems = questions.stream()
+                .map(q -> new QuestionListResponse.QuestionItem(q.getId(), q.getQuestion()))
+                .collect(Collectors.toList());
+
+        log.info("Found {} questions matching the criteria", questionItems.size());
+
+        return new QuestionListResponse(questionItems);
     }
 }

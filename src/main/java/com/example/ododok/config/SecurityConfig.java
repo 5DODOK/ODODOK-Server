@@ -2,6 +2,7 @@ package com.example.ododok.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -19,6 +20,7 @@ public class SecurityConfig {
                 .oauth2Login(oauth2 -> oauth2.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/oauth/**", "/h2-console/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/problem").permitAll()
                         .anyRequest().authenticated()
                 )
                 .headers(headers -> headers.frameOptions().disable());

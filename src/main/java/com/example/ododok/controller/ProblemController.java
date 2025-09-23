@@ -2,6 +2,7 @@ package com.example.ododok.controller;
 
 import com.example.ododok.dto.ProblemSubmissionRequest;
 import com.example.ododok.dto.ProblemSubmissionResponse;
+import com.example.ododok.dto.QuestionListResponse;
 import com.example.ododok.service.JwtService;
 import com.example.ododok.service.ProblemService;
 import jakarta.validation.Valid;
@@ -18,6 +19,21 @@ public class ProblemController {
 
     private final ProblemService problemService;
     private final JwtService jwtService;
+
+    @GetMapping
+    public ResponseEntity<QuestionListResponse> getQuestions(
+            @RequestParam(required = false) Long category,
+            @RequestParam(required = false) Long company) {
+
+        try {
+            QuestionListResponse response = problemService.getQuestions(category, company);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Failed to fetch questions", e);
+            throw e;
+        }
+    }
 
     @PostMapping
     public ResponseEntity<ProblemSubmissionResponse> submitProblem(
