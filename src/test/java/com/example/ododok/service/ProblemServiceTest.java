@@ -2,6 +2,7 @@ package com.example.ododok.service;
 
 import com.example.ododok.dto.ProblemSubmissionRequest;
 import com.example.ododok.dto.ProblemSubmissionResponse;
+import com.example.ododok.dto.QuestionListResponse;
 import com.example.ododok.entity.Question;
 import com.example.ododok.entity.User;
 import com.example.ododok.entity.UserRole;
@@ -213,6 +214,120 @@ class ProblemServiceTest {
         verify(userRepository).save(argThat(savedUser ->
             savedUser.getPoints().equals(600)
         ));
+    }
+
+    @Test
+    @DisplayName("문제 목록 조회 - 필터 없음 (모든 공개 문제)")
+    void getQuestions_NoFilters() {
+        // given
+        Question question1 = createPublicQuestion(1L, "문제 1", 1L, 1L);
+        Question question2 = createPublicQuestion(2L, "문제 2", 2L, 2L);
+        Question question3 = createPrivateQuestion(3L, "문제 3", 1L, 1L);
+
+        when(questionRepository.findAll()).thenReturn(List.of(question1, question2, question3));
+
+        // when
+        QuestionListResponse response = problemService.getQuestions(null, null);
+
+        // then
+        assertThat(response.getQuestions()).hasSize(2);
+        assertThat(response.getQuestions().get(0).getQuestionId()).isEqualTo(1L);
+        assertThat(response.getQuestions().get(0).getQuestion()).isEqualTo("문제 1");
+        assertThat(response.getQuestions().get(1).getQuestionId()).isEqualTo(2L);
+        assertThat(response.getQuestions().get(1).getQuestion()).isEqualTo("문제 2");
+    }
+
+    @Test
+    @DisplayName("문제 목록 조회 - 카테고리 필터만 적용")
+    void getQuestions_CategoryFilterOnly() {
+        // given
+        Question question1 = createPublicQuestion(1L, "문제 1", 1L, 1L);
+        Question question2 = createPublicQuestion(2L, "문제 2", 1L, 2L);
+        Question question3 = createPublicQuestion(3L, "문제 3", 2L, 1L);
+
+        when(questionRepository.findAll()).thenReturn(List.of(question1, question2, question3));
+
+        // when
+        QuestionListResponse response = problemService.getQuestions(1L, null);
+
+        // then
+        assertThat(response.getQuestions()).hasSize(2);
+        assertThat(response.getQuestions().get(0).getQuestionId()).isEqualTo(1L);
+        assertThat(response.getQuestions().get(1).getQuestionId()).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("문제 목록 조회 - 회사 필터만 적용")
+    void getQuestions_CompanyFilterOnly() {
+        // given
+        Question question1 = createPublicQuestion(1L, "문제 1", 1L, 1L);
+        Question question2 = createPublicQuestion(2L, "문제 2", 2L, 1L);
+        Question question3 = createPublicQuestion(3L, "문제 3", 1L, 2L);
+
+        when(questionRepository.findAll()).thenReturn(List.of(question1, question2, question3));
+
+        // when
+        QuestionListResponse response = problemService.getQuestions(null, 1L);
+
+        // then
+        assertThat(response.getQuestions()).hasSize(2);
+        assertThat(response.getQuestions().get(0).getQuestionId()).isEqualTo(1L);
+        assertThat(response.getQuestions().get(1).getQuestionId()).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("문제 목록 조회 - 카테고리와 회사 필터 모두 적용")
+    void getQuestions_BothFilters() {
+        // given
+        Question question1 = createPublicQuestion(1L, "문제 1", 1L, 1L);
+        Question question2 = createPublicQuestion(2L, "문제 2", 1L, 2L);
+        Question question3 = createPublicQuestion(3L, "문제 3", 2L, 1L);
+
+        when(questionRepository.findAll()).thenReturn(List.of(question1, question2, question3));
+
+        // when
+        QuestionListResponse response = problemService.getQuestions(1L, 1L);
+
+        // then
+        assertThat(response.getQuestions()).hasSize(1);
+        assertThat(response.getQuestions().get(0).getQuestionId()).isEqualTo(1L);
+        assertThat(response.getQuestions().get(0).getQuestion()).isEqualTo("문제 1");
+    }
+
+    @Test
+    @DisplayName("문제 목록 조회 - 필터 조건에 맞는 문제가 없는 경우")
+    void getQuestions_NoMatchingQuestions() {
+        // given
+        Question question1 = createPublicQuestion(1L, "문제 1", 1L, 1L);
+        Question question2 = createPublicQuestion(2L, "문제 2", 2L, 2L);
+
+        when(questionRepository.findAll()).thenReturn(List.of(question1, question2));
+
+        // when
+        QuestionListResponse response = problemService.getQuestions(3L, 3L);
+
+        // then
+        assertThat(response.getQuestions()).isEmpty();
+    }
+
+    private Question createPublicQuestion(Long id, String questionText, Long categoryId, Long companyId) {
+        Question question = new Question();
+        question.setId(id);
+        question.setQuestion(questionText);
+        question.setCategoryId(categoryId);
+        question.setCompanyId(companyId);
+        question.setIsPublic(true);
+        return question;
+    }
+
+    private Question createPrivateQuestion(Long id, String questionText, Long categoryId, Long companyId) {
+        Question question = new Question();
+        question.setId(id);
+        question.setQuestion(questionText);
+        question.setCategoryId(categoryId);
+        question.setCompanyId(companyId);
+        question.setIsPublic(false);
+        return question;
     }
 
     private User createUser(Long userId, String email, String name, Integer points) {

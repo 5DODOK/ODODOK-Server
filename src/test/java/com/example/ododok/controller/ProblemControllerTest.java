@@ -2,6 +2,7 @@ package com.example.ododok.controller;
 
 import com.example.ododok.dto.ProblemSubmissionRequest;
 import com.example.ododok.dto.ProblemSubmissionResponse;
+import com.example.ododok.dto.QuestionListResponse;
 import com.example.ododok.service.JwtService;
 import com.example.ododok.service.ProblemService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,6 +20,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -176,5 +178,99 @@ class ProblemControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("문제 목록 조회 - 필터 없음")
+    void getQuestions_NoFilters() throws Exception {
+        // given
+        QuestionListResponse.QuestionItem question1 = new QuestionListResponse.QuestionItem(1L, "JavaScript에서 호이스팅(Hoisting)이 무엇인지 설명하고, var, let, const의 호이스팅 차이점을 예시와 함께 설명해주세요.");
+        QuestionListResponse.QuestionItem question2 = new QuestionListResponse.QuestionItem(2L, "React의 Virtual DOM이 무엇인지 설명하고, 실제 DOM과의 차이점 및 성능상 이점을 설명해주세요.");
+        QuestionListResponse response = new QuestionListResponse(List.of(question1, question2));
+
+        when(problemService.getQuestions(null, null)).thenReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/problem"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.questions").isArray())
+                .andExpect(jsonPath("$.questions.length()").value(2))
+                .andExpect(jsonPath("$.questions[0].questionId").value(1))
+                .andExpect(jsonPath("$.questions[0].question").value("JavaScript에서 호이스팅(Hoisting)이 무엇인지 설명하고, var, let, const의 호이스팅 차이점을 예시와 함께 설명해주세요."))
+                .andExpect(jsonPath("$.questions[1].questionId").value(2))
+                .andExpect(jsonPath("$.questions[1].question").value("React의 Virtual DOM이 무엇인지 설명하고, 실제 DOM과의 차이점 및 성능상 이점을 설명해주세요."));
+    }
+
+    @Test
+    @DisplayName("문제 목록 조회 - 카테고리 필터 적용")
+    void getQuestions_WithCategoryFilter() throws Exception {
+        // given
+        QuestionListResponse.QuestionItem question1 = new QuestionListResponse.QuestionItem(1L, "데이터베이스에서 트랜잭션(Transaction)이란 무엇이며, ACID 속성에 대해 설명해주세요.");
+        QuestionListResponse response = new QuestionListResponse(List.of(question1));
+
+        when(problemService.getQuestions(1L, null)).thenReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/problem").param("category", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.questions").isArray())
+                .andExpect(jsonPath("$.questions.length()").value(1))
+                .andExpect(jsonPath("$.questions[0].questionId").value(1))
+                .andExpect(jsonPath("$.questions[0].question").value("데이터베이스에서 트랜잭션(Transaction)이란 무엇이며, ACID 속성에 대해 설명해주세요."));
+    }
+
+    @Test
+    @DisplayName("문제 목록 조회 - 회사 필터 적용")
+    void getQuestions_WithCompanyFilter() throws Exception {
+        // given
+        QuestionListResponse.QuestionItem question1 = new QuestionListResponse.QuestionItem(2L, "RESTful API 설계 원칙에 대해 설명하고, GET과 POST의 차이점을 예시와 함께 설명해주세요.");
+        QuestionListResponse response = new QuestionListResponse(List.of(question1));
+
+        when(problemService.getQuestions(null, 2L)).thenReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/problem").param("company", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.questions").isArray())
+                .andExpect(jsonPath("$.questions.length()").value(1))
+                .andExpect(jsonPath("$.questions[0].questionId").value(2))
+                .andExpect(jsonPath("$.questions[0].question").value("RESTful API 설계 원칙에 대해 설명하고, GET과 POST의 차이점을 예시와 함께 설명해주세요."));
+    }
+
+    @Test
+    @DisplayName("문제 목록 조회 - 카테고리와 회사 필터 모두 적용")
+    void getQuestions_WithBothFilters() throws Exception {
+        // given
+        QuestionListResponse.QuestionItem question1 = new QuestionListResponse.QuestionItem(3L, "객체지향 프로그래밍의 4가지 특징에 대해 설명해주세요.");
+        QuestionListResponse response = new QuestionListResponse(List.of(question1));
+
+        when(problemService.getQuestions(1L, 2L)).thenReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/problem")
+                        .param("category", "1")
+                        .param("company", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.questions").isArray())
+                .andExpect(jsonPath("$.questions.length()").value(1))
+                .andExpect(jsonPath("$.questions[0].questionId").value(3))
+                .andExpect(jsonPath("$.questions[0].question").value("객체지향 프로그래밍의 4가지 특징에 대해 설명해주세요."));
+    }
+
+    @Test
+    @DisplayName("문제 목록 조회 - 빈 결과")
+    void getQuestions_EmptyResult() throws Exception {
+        // given
+        QuestionListResponse response = new QuestionListResponse(List.of());
+
+        when(problemService.getQuestions(999L, 999L)).thenReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/problem")
+                        .param("category", "999")
+                        .param("company", "999"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.questions").isArray())
+                .andExpect(jsonPath("$.questions.length()").value(0));
     }
 }
