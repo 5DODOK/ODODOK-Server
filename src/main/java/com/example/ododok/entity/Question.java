@@ -34,6 +34,7 @@ public class Question {
 
     private String answer;
 
+    @Column(name = "question_year")
     private Integer year;
 
     @Column(name = "company_id")
