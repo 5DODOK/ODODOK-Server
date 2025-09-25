@@ -12,13 +12,12 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SearchResponse {
-    private String query;
+    private Map<String, Object> query;
     private int page;
     private int size;
     private long total;
-    private long tookMs;
-    private Map<String, Map<String, Integer>> facets;
     private List<SearchResult> results;
+    private Map<String, Object> facets;
 
     @Data
     @NoArgsConstructor
@@ -27,19 +26,11 @@ public class SearchResponse {
         private String type;
         private Long id;
         private String question;
-        private String snippet;
-        private Integer difficulty;
-        private String difficultyLabel; // EASY, MEDIUM, HARD
         private Integer year;
         private Long companyId;
-        private String companyName;
         private Long categoryId;
-        private Double score;
+        private Integer difficulty;
+        private String difficultyLabel; // EASY, MEDIUM, HARD
         private LocalDateTime createdAt;
-
-        // User 타입 결과를 위한 추가 필드
-        private String username;
-        private String email;
-        private String displayName;
     }
 }

@@ -24,17 +24,13 @@ public class SearchController {
 
     @GetMapping
     public ResponseEntity<SearchResponse> search(
-            @RequestParam(value = "q", defaultValue = "") String q,
-            @RequestParam(value = "page", defaultValue = "1") int page,
-            @RequestParam(value = "size", defaultValue = "20") int size,
-            @RequestParam(value = "sort", defaultValue = "rel") String sort,
-            @RequestParam(value = "types", defaultValue = "question,user") String types,
-            @RequestParam(value = "difficulty", required = false) String difficulty,
-            @RequestParam(value = "category_id", required = false) Long categoryId,
             @RequestParam(value = "year", required = false) Integer year,
             @RequestParam(value = "company_id", required = false) Long companyId,
             @RequestParam(value = "company_name", required = false) String companyName,
-            @RequestParam(value = "highlight", defaultValue = "true") boolean highlight,
+            @RequestParam(value = "category_id", required = false) Long categoryId,
+            @RequestParam(value = "sort", defaultValue = "rel") String sort,
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size,
             @RequestHeader("Authorization") String authHeader) {
 
         try {
@@ -42,17 +38,13 @@ public class SearchController {
 
             // 요청 DTO 생성
             SearchRequest request = new SearchRequest();
-            request.setQ(q);
-            request.setPage(page);
-            request.setSize(size);
-            request.setSort(sort);
-            request.setTypes(parseTypes(types));
-            request.setDifficulty(difficulty);
-            request.setCategoryId(categoryId);
             request.setYear(year);
             request.setCompanyId(companyId);
             request.setCompanyName(companyName);
-            request.setHighlight(highlight);
+            request.setCategoryId(categoryId);
+            request.setSort(sort);
+            request.setPage(page);
+            request.setSize(size);
 
             // 요청 파라미터 검증
             validateSearchRequest(request);
@@ -77,16 +69,6 @@ public class SearchController {
         return jwtService.extractUserId(token);
     }
 
-    private List<String> parseTypes(String types) {
-        if (types == null || types.isEmpty()) {
-            return List.of("question", "user");
-        }
-        return Arrays.asList(types.split(","))
-                .stream()
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .toList();
-    }
 
     private void validateSearchRequest(SearchRequest request) {
         // 페이지 범위 검증
@@ -99,31 +81,10 @@ public class SearchController {
             throw new IllegalArgumentException("크기는 1~100 사이여야 합니다.");
         }
 
-        // 검색어 길이 검증
-        if (request.getQ().length() > 200) {
-            throw new IllegalArgumentException("검색어는 최대 200자까지 허용됩니다.");
-        }
-
         // 정렬 옵션 검증
-        List<String> validSorts = List.of("rel", "new", "old", "pop");
+        List<String> validSorts = List.of("rel", "new", "old");
         if (!validSorts.contains(request.getSort())) {
             throw new IllegalArgumentException("유효하지 않은 정렬 옵션입니다.");
-        }
-
-        // 타입 검증
-        List<String> validTypes = List.of("question", "user");
-        for (String type : request.getTypes()) {
-            if (!validTypes.contains(type)) {
-                throw new IllegalArgumentException("유효하지 않은 타입입니다: " + type);
-            }
-        }
-
-        // 난이도 검증
-        if (request.getDifficulty() != null) {
-            List<String> validDifficulties = List.of("EASY", "MEDIUM", "HARD");
-            if (!validDifficulties.contains(request.getDifficulty())) {
-                throw new IllegalArgumentException("유효하지 않은 난이도입니다.");
-            }
         }
 
         // 카테고리 ID 검증
@@ -132,8 +93,8 @@ public class SearchController {
         }
 
         // 학년도 검증
-        if (request.getYear() != null && (request.getYear() < 2000 || request.getYear() > 2026)) {
-            throw new IllegalArgumentException("학년도는 2000년에서 2026년 사이여야 합니다.");
+        if (request.getYear() != null && (request.getYear() < 2000 || request.getYear() > java.time.Year.now().getValue() + 1)) {
+            throw new IllegalArgumentException("유효하지 않은 쿼리 파라미터입니다.");
         }
 
         // 회사 ID 검증

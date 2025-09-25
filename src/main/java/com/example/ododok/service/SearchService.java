@@ -32,9 +32,7 @@ public class SearchService {
     private final UserRepository userRepository;
     private final CompanyRepository companyRepository;
 
-    private static final List<String> VALID_SORT_OPTIONS = List.of("rel", "new", "old", "pop");
-    private static final List<String> VALID_TYPES = List.of("question", "user");
-    private static final List<String> VALID_DIFFICULTIES = List.of("EASY", "MEDIUM", "HARD");
+    private static final List<String> VALID_SORT_OPTIONS = List.of("rel", "new", "old");
 
     private static final Map<String, Integer> DIFFICULTY_MAPPING = Map.of(
             "EASY", 1,
@@ -53,69 +51,53 @@ public class SearchService {
             List<com.example.ododok.entity.Company> companies = companyRepository.findByNameContainingIgnoreCase(request.getCompanyName().trim());
             if (companies.isEmpty()) {
                 // 회사를 찾지 못했으면 빈 결과 반환
-                return new SearchResponse(
-                    request.getQ(),
-                    request.getPage(),
-                    request.getSize(),
-                    0L,
-                    System.currentTimeMillis() - startTime,
-                    calculateFacets(request),
-                    new ArrayList<>()
-                );
+                return createEmptyResponse(request, startTime);
             }
             // 첫 번째 매칭되는 회사의 ID를 사용
             request.setCompanyId(companies.get(0).getId());
         }
 
-        // 검색 실행
-        List<SearchResponse.SearchResult> results = new ArrayList<>();
-        long totalCount = 0;
-
-        if (request.getTypes().contains("question")) {
-            SearchResults questionResults = searchQuestions(request, userId);
-            results.addAll(questionResults.results);
-            totalCount += questionResults.total;
-        }
-
-        if (request.getTypes().contains("user")) {
-            SearchResults userResults = searchUsers(request, userId);
-            results.addAll(userResults.results);
-            totalCount += userResults.total;
-        }
-
-        // 결과 정렬 및 페이징
-        results = applySortingAndPaging(results, request);
+        // 문제만 검색
+        SearchResults questionResults = searchQuestions(request, userId);
 
         // 패싯 계산
-        Map<String, Map<String, Integer>> facets = calculateFacets(request);
+        Map<String, Object> facets = calculateFacets(request);
 
         long tookMs = System.currentTimeMillis() - startTime;
 
         return new SearchResponse(
-                request.getQ(),
+                Map.of(
+                    "year", request.getYear(),
+                    "company_id", request.getCompanyId(),
+                    "sort", request.getSort()
+                ),
                 request.getPage(),
                 request.getSize(),
-                totalCount,
-                tookMs,
-                facets,
-                results
+                questionResults.total,
+                questionResults.results,
+                facets
         );
     }
 
     private void validateSearchRequest(SearchRequest request) {
         if (!VALID_SORT_OPTIONS.contains(request.getSort())) {
-            throw new CsvProcessingException("유효하지 않은 정렬 옵션입니다.", "INVALID_SORT");
+            throw new CsvProcessingException("유효하지 않은 쿼리 파라미터입니다.", "INVALID_SORT");
         }
+    }
 
-        for (String type : request.getTypes()) {
-            if (!VALID_TYPES.contains(type)) {
-                throw new CsvProcessingException("유효하지 않은 타입입니다.", "INVALID_TYPE");
-            }
-        }
-
-        if (request.getDifficulty() != null && !VALID_DIFFICULTIES.contains(request.getDifficulty())) {
-            throw new CsvProcessingException("유효하지 않은 난이도입니다.", "INVALID_DIFFICULTY");
-        }
+    private SearchResponse createEmptyResponse(SearchRequest request, long startTime) {
+        return new SearchResponse(
+            Map.of(
+                "year", request.getYear(),
+                "company_id", request.getCompanyId(),
+                "sort", request.getSort()
+            ),
+            request.getPage(),
+            request.getSize(),
+            0L,
+            new ArrayList<>(),
+            calculateFacets(request)
+        );
     }
 
     private SearchResults searchQuestions(SearchRequest request, Long userId) {
@@ -123,14 +105,10 @@ public class SearchService {
         Sort sort = createSort(request.getSort());
         Pageable pageable = PageRequest.of(request.getPage() - 1, request.getSize(), sort);
 
-        // 통합 필터링을 사용하여 검색
-        String searchTerm = request.getQ().isEmpty() ? "" : "%" + request.getQ().toLowerCase() + "%";
-        Integer difficultyInt = request.getDifficulty() != null ?
-                DIFFICULTY_MAPPING.get(request.getDifficulty()) : null;
-
+        // 필터링을 사용하여 검색 (텍스트 검색 제거)
         Page<Question> questionPage = questionRepository.findByAllFilters(
-                searchTerm,
-                difficultyInt,
+                "", // 텍스트 검색 제거
+                null, // 난이도 필터 제거
                 request.getYear(),
                 request.getCompanyId(),
                 request.getCategoryId(),
@@ -138,163 +116,39 @@ public class SearchService {
                 pageable);
 
         List<SearchResponse.SearchResult> results = questionPage.getContent().stream()
-                .map(question -> mapQuestionToSearchResult(question, request))
+                .map(this::mapQuestionToSearchResult)
                 .collect(Collectors.toList());
 
         return new SearchResults(results, questionPage.getTotalElements());
     }
 
 
-    private SearchResults searchUsers(SearchRequest request, Long userId) {
-        // 사용자 검색은 기본 구현 (확장 가능)
-        Sort sort = Sort.by(Sort.Direction.DESC, "createdAt");
-        Pageable pageable = PageRequest.of(request.getPage() - 1, request.getSize(), sort);
 
-        Page<User> userPage;
-
-        if (request.getQ().isEmpty()) {
-            userPage = userRepository.findAll(pageable);
-        } else {
-            String searchTerm = request.getQ().toLowerCase();
-            userPage = userRepository.findByUsernameContainingIgnoreCase(searchTerm, pageable);
-        }
-
-        List<SearchResponse.SearchResult> results = userPage.getContent().stream()
-                .map(user -> mapUserToSearchResult(user, request))
-                .collect(Collectors.toList());
-
-        return new SearchResults(results, userPage.getTotalElements());
-    }
-
-    private SearchResponse.SearchResult mapQuestionToSearchResult(Question question, SearchRequest request) {
+    private SearchResponse.SearchResult mapQuestionToSearchResult(Question question) {
         SearchResponse.SearchResult result = new SearchResponse.SearchResult();
         result.setType("question");
         result.setId(question.getId());
         result.setQuestion(question.getQuestion());
-        result.setSnippet(createSnippet(question, request));
-        result.setDifficulty(question.getDifficulty());
-        result.setDifficultyLabel(getDifficultyLabel(question.getDifficulty()));
         result.setYear(question.getYear());
         result.setCompanyId(question.getCompanyId());
-        result.setCompanyName(getCompanyName(question.getCompanyId()));
         result.setCategoryId(question.getCategoryId());
-        result.setScore(calculateScore(question, request));
+        result.setDifficulty(question.getDifficulty());
+        result.setDifficultyLabel(getDifficultyLabel(question.getDifficulty()));
         result.setCreatedAt(question.getCreatedAt());
         return result;
     }
 
-    private SearchResponse.SearchResult mapUserToSearchResult(User user, SearchRequest request) {
-        SearchResponse.SearchResult result = new SearchResponse.SearchResult();
-        result.setType("user");
-        result.setId(user.getUserId());
-        result.setUsername(user.getUsername());
-        result.setEmail(user.getEmail());
-        result.setDisplayName(user.getDisplayName());
-        result.setSnippet(createUserSnippet(user, request));
-        result.setScore(calculateUserScore(user, request));
-        result.setCreatedAt(user.getCreatedAt());
-        return result;
-    }
 
-    private String createSnippet(Question question, SearchRequest request) {
-        String content = question.getContent() != null ? question.getContent() : question.getQuestion();
-        String snippet = content.length() > 160 ? content.substring(0, 157) + "..." : content;
 
-        if (request.isHighlight() && !request.getQ().isEmpty()) {
-            snippet = highlightSearchTerms(snippet, request.getQ());
-        }
-
-        return snippet;
-    }
-
-    private String createUserSnippet(User user, SearchRequest request) {
-        String snippet = user.getDisplayName() != null ? user.getDisplayName() : user.getUsername();
-
-        if (request.isHighlight() && !request.getQ().isEmpty()) {
-            snippet = highlightSearchTerms(snippet, request.getQ());
-        }
-
-        return snippet;
-    }
-
-    private String highlightSearchTerms(String text, String searchTerm) {
-        if (searchTerm == null || searchTerm.isEmpty()) {
-            return text;
-        }
-
-        String[] terms = searchTerm.split("\\s+");
-        String result = text;
-
-        for (String term : terms) {
-            if (!term.isEmpty()) {
-                result = result.replaceAll("(?i)" + term, "<em>$0</em>");
-            }
-        }
-
-        return result;
-    }
-
-    private Double calculateScore(Question question, SearchRequest request) {
-        double score = 1.0;
-
-        // 텍스트 매칭 점수
-        if (!request.getQ().isEmpty()) {
-            String searchTerm = request.getQ().toLowerCase();
-            String questionText = (question.getQuestion() + " " +
-                    (question.getContent() != null ? question.getContent() : "")).toLowerCase();
-
-            if (questionText.contains(searchTerm)) {
-                score += 10.0;
-            }
-        }
-
-        // 최신성 점수
-        if ("new".equals(request.getSort())) {
-            long daysSinceCreation = java.time.Duration.between(question.getCreatedAt(), LocalDateTime.now()).toDays();
-            score += Math.max(0, 30 - daysSinceCreation) * 0.1;
-        }
-
-        return score;
-    }
-
-    private Double calculateUserScore(User user, SearchRequest request) {
-        double score = 1.0;
-
-        // 사용자 역할 점수
-        if (user.getRole() == UserRole.ADMIN) {
-            score += 5.0;
-        }
-
-        return score;
-    }
 
     private Sort createSort(String sortOption) {
         return switch (sortOption) {
             case "new" -> Sort.by(Sort.Direction.DESC, "createdAt");
             case "old" -> Sort.by(Sort.Direction.ASC, "createdAt");
-            case "pop" -> Sort.by(Sort.Direction.DESC, "id"); // 임시: 인기도 지표 없음
             default -> Sort.by(Sort.Direction.DESC, "createdAt"); // rel 기본값
         };
     }
 
-    private List<SearchResponse.SearchResult> applySortingAndPaging(
-            List<SearchResponse.SearchResult> results, SearchRequest request) {
-
-        // 점수순 정렬 (rel인 경우)
-        if ("rel".equals(request.getSort())) {
-            results.sort((a, b) -> Double.compare(b.getScore(), a.getScore()));
-        }
-
-        // 페이징 적용
-        int start = (request.getPage() - 1) * request.getSize();
-        int end = Math.min(start + request.getSize(), results.size());
-
-        if (start >= results.size()) {
-            return new ArrayList<>();
-        }
-
-        return results.subList(start, end);
-    }
 
     private String getDifficultyLabel(Integer difficulty) {
         if (difficulty == null) return null;
@@ -313,37 +167,31 @@ public class SearchService {
                 .orElse(null);
     }
 
-    private Map<String, Map<String, Integer>> calculateFacets(SearchRequest request) {
-        Map<String, Map<String, Integer>> facets = new HashMap<>();
-
-        // 타입 패싯
-        Map<String, Integer> typeFacets = new HashMap<>();
-        typeFacets.put("question", (int) questionRepository.count());
-        typeFacets.put("user", (int) userRepository.count());
-        facets.put("types", typeFacets);
-
-        // 난이도 패싯
-        Map<String, Integer> difficultyFacets = new HashMap<>();
-        difficultyFacets.put("EASY", questionRepository.countByDifficulty(1));
-        difficultyFacets.put("MEDIUM", questionRepository.countByDifficulty(2));
-        difficultyFacets.put("HARD", questionRepository.countByDifficulty(3));
-        facets.put("difficulty", difficultyFacets);
+    private Map<String, Object> calculateFacets(SearchRequest request) {
+        Map<String, Object> facets = new HashMap<>();
 
         // 학년도 패싯
         List<Integer> years = questionRepository.findDistinctYears();
-        Map<String, Integer> yearFacets = new HashMap<>();
+        List<Map<String, Object>> yearFacets = new ArrayList<>();
         for (Integer year : years) {
-            yearFacets.put(year.toString(), questionRepository.countByYear(year));
+            Map<String, Object> yearFacet = new HashMap<>();
+            yearFacet.put("value", year);
+            yearFacet.put("count", questionRepository.countByYear(year));
+            yearFacets.add(yearFacet);
         }
         facets.put("year", yearFacets);
 
         // 회사 패싯
         List<Long> companyIds = questionRepository.findDistinctCompanyIds();
-        Map<String, Integer> companyFacets = new HashMap<>();
+        List<Map<String, Object>> companyFacets = new ArrayList<>();
         for (Long companyId : companyIds) {
             String companyName = getCompanyName(companyId);
             if (companyName != null) {
-                companyFacets.put(companyId + ":" + companyName, questionRepository.countByCompanyId(companyId));
+                Map<String, Object> companyFacet = new HashMap<>();
+                companyFacet.put("id", companyId);
+                companyFacet.put("name", companyName);
+                companyFacet.put("count", questionRepository.countByCompanyId(companyId));
+                companyFacets.add(companyFacet);
             }
         }
         facets.put("company", companyFacets);
