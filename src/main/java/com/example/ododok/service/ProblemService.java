@@ -7,6 +7,7 @@ import com.example.ododok.entity.Question;
 import com.example.ododok.entity.User;
 import com.example.ododok.repository.QuestionRepository;
 import com.example.ododok.repository.UserRepository;
+import com.example.ododok.repository.CompanyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ public class ProblemService {
 
     private final QuestionRepository questionRepository;
     private final UserRepository userRepository;
+    private final CompanyRepository companyRepository;
 
     @Transactional
     public ProblemSubmissionResponse submitProblem(ProblemSubmissionRequest request, Long userId) {
@@ -79,13 +81,23 @@ public class ProblemService {
         log.info("Fetching questions with categoryId: {} and companyId: {}", categoryId, companyId);
 
         List<Question> questions;
+        String companyName = null;
 
-        if (categoryId != null && companyId != null) {
+        // companyId를 companyName으로 변환
+        if (companyId != null) {
+            companyName = companyRepository.findById(companyId)
+                    .map(company -> company.getName())
+                    .orElse(null);
+        }
+
+        final String finalCompanyName = companyName;
+
+        if (categoryId != null && finalCompanyName != null) {
             // Both filters applied
             questions = questionRepository.findAll().stream()
                     .filter(q -> q.getIsPublic())
                     .filter(q -> categoryId.equals(q.getCategoryId()))
-                    .filter(q -> companyId.equals(q.getCompanyId()))
+                    .filter(q -> finalCompanyName.equals(q.getCompanyName()))
                     .collect(Collectors.toList());
         } else if (categoryId != null) {
             // Only category filter
@@ -93,11 +105,11 @@ public class ProblemService {
                     .filter(q -> q.getIsPublic())
                     .filter(q -> categoryId.equals(q.getCategoryId()))
                     .collect(Collectors.toList());
-        } else if (companyId != null) {
+        } else if (finalCompanyName != null) {
             // Only company filter
             questions = questionRepository.findAll().stream()
                     .filter(q -> q.getIsPublic())
-                    .filter(q -> companyId.equals(q.getCompanyId()))
+                    .filter(q -> finalCompanyName.equals(q.getCompanyName()))
                     .collect(Collectors.toList());
         } else {
             // No filters, return all public questions

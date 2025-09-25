@@ -37,8 +37,8 @@ public class Question {
     @Column(name = "question_year")
     private Integer year;
 
-    @Column(name = "company_id")
-    private Long companyId;
+    @Column(name = "company_name", length = 100)
+    private String companyName;
 
     @Column(name = "category_id")
     private Long categoryId;
@@ -59,9 +59,6 @@ public class Question {
 
     private LocalDateTime updatedAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "company_id", insertable = false, updatable = false)
-    private Company company;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", insertable = false, updatable = false)

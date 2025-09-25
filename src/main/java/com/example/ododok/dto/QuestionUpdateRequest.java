@@ -31,5 +31,6 @@ public class QuestionUpdateRequest {
 
     private Integer year;
 
-    private Long companyId;
+    @Size(max = 100, message = "회사명은 최대 100자까지 허용됩니다.")
+    private String companyName;
 }

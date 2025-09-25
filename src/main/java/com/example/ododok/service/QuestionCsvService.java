@@ -307,14 +307,15 @@ public class QuestionCsvService {
             question.setYear(Integer.parseInt(row.getYear().trim()));
         }
 
-        // Company
-        if (row.getCompanyId() != null && !row.getCompanyId().trim().isEmpty()) {
-            question.setCompanyId(Long.parseLong(row.getCompanyId().trim()));
-        } else if (row.getCompanyName() != null && !row.getCompanyName().trim().isEmpty()) {
-            Long companyId = companyRepository.findByName(row.getCompanyName().trim())
-                    .map(company -> company.getId())
+        // Company - 직접 companyName 저장
+        if (row.getCompanyName() != null && !row.getCompanyName().trim().isEmpty()) {
+            question.setCompanyName(row.getCompanyName().trim());
+        } else if (row.getCompanyId() != null && !row.getCompanyId().trim().isEmpty()) {
+            // company_id가 주어진 경우 company 이름으로 변환
+            String companyName = companyRepository.findById(Long.parseLong(row.getCompanyId().trim()))
+                    .map(company -> company.getName())
                     .orElse(null);
-            question.setCompanyId(companyId);
+            question.setCompanyName(companyName);
         }
 
         // Category
@@ -336,10 +337,10 @@ public class QuestionCsvService {
         if ("question".equals(upsertKey)) {
             existing = questionRepository.findByQuestion(question.getQuestion());
         } else {
-            existing = questionRepository.findByQuestionAndYearAndCompanyIdAndCategoryId(
+            existing = questionRepository.findByQuestionAndYearAndCompanyNameAndCategoryId(
                     question.getQuestion(),
                     question.getYear(),
-                    question.getCompanyId(),
+                    question.getCompanyName(),
                     question.getCategoryId()
             );
         }
@@ -349,7 +350,7 @@ public class QuestionCsvService {
             existingQuestion.setQuestion(question.getQuestion());
             existingQuestion.setDifficulty(question.getDifficulty());
             existingQuestion.setYear(question.getYear());
-            existingQuestion.setCompanyId(question.getCompanyId());
+            existingQuestion.setCompanyName(question.getCompanyName());
             existingQuestion.setCategoryId(question.getCategoryId());
             questionRepository.save(existingQuestion);
             return true; // Updated

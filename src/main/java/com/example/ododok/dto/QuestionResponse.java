@@ -18,7 +18,7 @@ public class QuestionResponse {
     private String answer;
     private Integer difficulty;
     private Integer year;
-    private Long companyId;
+    private String companyName;
     private Long categoryId;
     private Boolean isPublic;
     private LocalDateTime createdAt;

@@ -46,19 +46,20 @@ public class SearchService {
         // 요청 검증
         validateSearchRequest(request);
 
-        // company name이 있으면 company id로 변환
-        if (request.getCompanyName() != null && !request.getCompanyName().trim().isEmpty()) {
-            List<com.example.ododok.entity.Company> companies = companyRepository.findByNameContainingIgnoreCase(request.getCompanyName().trim());
-            if (companies.isEmpty()) {
-                // 회사를 찾지 못했으면 빈 결과 반환
-                return createEmptyResponse(request, startTime);
-            }
-            // 첫 번째 매칭되는 회사의 ID를 사용
-            request.setCompanyId(companies.get(0).getId());
+        // company_name 필터 직접 사용 (변환 불필요)
+        String companyName = null;
+        if (request.getCompanyId() != null) {
+            // company_id가 주어진 경우 company 이름으로 변환
+            companyName = companyRepository.findById(request.getCompanyId())
+                    .map(com.example.ododok.entity.Company::getName)
+                    .orElse(null);
+        } else if (request.getCompanyName() != null && !request.getCompanyName().trim().isEmpty()) {
+            // company_name이 주어진 경우 직접 사용
+            companyName = request.getCompanyName().trim();
         }
 
         // 문제만 검색
-        SearchResults questionResults = searchQuestions(request, userId);
+        SearchResults questionResults = searchQuestions(request, userId, companyName);
 
         // 패싯 계산
         Map<String, Object> facets = calculateFacets(request);
@@ -68,7 +69,7 @@ public class SearchService {
         return new SearchResponse(
                 Map.of(
                     "year", request.getYear(),
-                    "company_id", request.getCompanyId(),
+                    "company_name", companyName,
                     "sort", request.getSort()
                 ),
                 request.getPage(),
@@ -85,11 +86,11 @@ public class SearchService {
         }
     }
 
-    private SearchResponse createEmptyResponse(SearchRequest request, long startTime) {
+    private SearchResponse createEmptyResponse(SearchRequest request, long startTime, String companyName) {
         return new SearchResponse(
             Map.of(
                 "year", request.getYear(),
-                "company_id", request.getCompanyId(),
+                "company_name", companyName,
                 "sort", request.getSort()
             ),
             request.getPage(),
@@ -100,7 +101,7 @@ public class SearchService {
         );
     }
 
-    private SearchResults searchQuestions(SearchRequest request, Long userId) {
+    private SearchResults searchQuestions(SearchRequest request, Long userId, String companyName) {
         // 정렬 설정
         Sort sort = createSort(request.getSort());
         Pageable pageable = PageRequest.of(request.getPage() - 1, request.getSize(), sort);
@@ -110,7 +111,7 @@ public class SearchService {
                 "", // 텍스트 검색 제거
                 null, // 난이도 필터 제거
                 request.getYear(),
-                request.getCompanyId(),
+                companyName,
                 request.getCategoryId(),
                 userId,
                 pageable);
@@ -130,7 +131,7 @@ public class SearchService {
         result.setId(question.getId());
         result.setQuestion(question.getQuestion());
         result.setYear(question.getYear());
-        result.setCompanyId(question.getCompanyId());
+        result.setCompanyName(question.getCompanyName());
         result.setCategoryId(question.getCategoryId());
         result.setDifficulty(question.getDifficulty());
         result.setDifficultyLabel(getDifficultyLabel(question.getDifficulty()));
@@ -160,12 +161,6 @@ public class SearchService {
         };
     }
 
-    private String getCompanyName(Long companyId) {
-        if (companyId == null) return null;
-        return companyRepository.findById(companyId)
-                .map(com.example.ododok.entity.Company::getName)
-                .orElse(null);
-    }
 
     private Map<String, Object> calculateFacets(SearchRequest request) {
         Map<String, Object> facets = new HashMap<>();
@@ -182,15 +177,18 @@ public class SearchService {
         facets.put("year", yearFacets);
 
         // 회사 패싯
-        List<Long> companyIds = questionRepository.findDistinctCompanyIds();
+        List<String> companyNames = questionRepository.findDistinctCompanyNames();
         List<Map<String, Object>> companyFacets = new ArrayList<>();
-        for (Long companyId : companyIds) {
-            String companyName = getCompanyName(companyId);
+        for (String companyName : companyNames) {
             if (companyName != null) {
                 Map<String, Object> companyFacet = new HashMap<>();
+                // company_name 기반이므로 id는 company 테이블에서 조회
+                Long companyId = companyRepository.findByName(companyName)
+                        .map(com.example.ododok.entity.Company::getId)
+                        .orElse(null);
                 companyFacet.put("id", companyId);
                 companyFacet.put("name", companyName);
-                companyFacet.put("count", questionRepository.countByCompanyId(companyId));
+                companyFacet.put("count", questionRepository.countByCompanyName(companyName));
                 companyFacets.add(companyFacet);
             }
         }

@@ -69,11 +69,9 @@ public class QuestionService {
     }
 
     private void validateCreateRequest(QuestionCreateRequest request) {
-        // Company ID 검증
-        if (request.getCompanyId() != null) {
-            if (!companyRepository.existsById(request.getCompanyId())) {
-                throw new CsvProcessingException("연결하려는 회사를 찾을 수 없습니다.", "COMPANY_NOT_FOUND");
-            }
+        // Company Name 검증
+        if (request.getCompanyName() != null && !request.getCompanyName().trim().isEmpty()) {
+            // Company name은 자유 입력 가능, 별도 검증 불필요
         }
 
         // Category ID 검증
@@ -101,7 +99,7 @@ public class QuestionService {
 
         // 선택적 필드 설정
         question.setYear(request.getYear());
-        question.setCompanyId(request.getCompanyId());
+        question.setCompanyName(request.getCompanyName());
         question.setCategoryId(request.getCategoryId());
 
         return question;
@@ -162,11 +160,9 @@ public class QuestionService {
             }
         }
 
-        // Company ID 검증
-        if (request.getCompanyId() != null) {
-            if (!companyRepository.existsById(request.getCompanyId())) {
-                throw new CsvProcessingException("연결하려는 회사를 찾을 수 없습니다.", "COMPANY_NOT_FOUND");
-            }
+        // Company Name 검증
+        if (request.getCompanyName() != null && !request.getCompanyName().trim().isEmpty()) {
+            // Company name은 자유 입력 가능, 별도 검증 불필요
         }
 
         // Difficulty 검증
@@ -223,8 +219,8 @@ public class QuestionService {
         if (request.getYear() != null) {
             question.setYear(request.getYear());
         }
-        if (request.getCompanyId() != null) {
-            question.setCompanyId(request.getCompanyId());
+        if (request.getCompanyName() != null) {
+            question.setCompanyName(request.getCompanyName());
         }
 
         // 수정 메타데이터 설정
@@ -242,7 +238,7 @@ public class QuestionService {
                 question.getAnswer(),
                 question.getDifficulty(),
                 question.getYear(),
-                question.getCompanyId(),
+                question.getCompanyName(),
                 question.getCategoryId(),
                 question.getIsPublic(),
                 question.getCreatedAt(),

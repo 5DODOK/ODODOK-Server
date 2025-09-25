@@ -27,7 +27,7 @@ public class SearchResponse {
         private Long id;
         private String question;
         private Integer year;
-        private Long companyId;
+        private String companyName;
         private Long categoryId;
         private Integer difficulty;
         private String difficultyLabel; // EASY, MEDIUM, HARD
