@@ -112,6 +112,7 @@ public class GoogleOAuthService {
         String oauthId = (String) userInfo.get("id");
         String email = (String) userInfo.get("email");
         String name = (String) userInfo.get("name");
+        String profileImageUrl = (String) userInfo.get("picture");
         String oauthProvider = "google";
 
         User existingUser = userRepository.findByOauthProviderAndOauthId(oauthProvider, oauthId)
@@ -119,12 +120,14 @@ public class GoogleOAuthService {
 
         if (existingUser != null) {
             existingUser.setName(name);
+            existingUser.setProfileImageUrl(profileImageUrl);
             existingUser.setUpdatedAt(LocalDateTime.now());
             return userRepository.save(existingUser);
         } else {
             User newUser = new User();
             newUser.setEmail(email);
             newUser.setName(name);
+            newUser.setProfileImageUrl(profileImageUrl);
             newUser.setOauthProvider(oauthProvider);
             newUser.setOauthId(oauthId);
             newUser.setRole(determineUserRole(email));

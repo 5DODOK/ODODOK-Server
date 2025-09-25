@@ -22,9 +22,10 @@ public class AuthResponse {
         private Long userId;
         private String email;
         private String name;
+        private String profileImageUrl;
 
         public static UserInfo from(User user) {
-            return new UserInfo(user.getUserId(), user.getEmail(), user.getName());
+            return new UserInfo(user.getUserId(), user.getEmail(), user.getName(), user.getProfileImageUrl());
         }
     }
 
