@@ -45,7 +45,6 @@ public class QuestionCsvService {
 
     private static final Set<String> VALID_HEADER_COMBINATIONS = Set.of(
             "question,difficulty,year,company_name,category_name",
-            "question,difficulty,year,company_id,category_id",
             "question,difficulty,year"
     );
 
@@ -233,51 +232,19 @@ public class QuestionCsvService {
     }
 
     private void validateMutualExclusion(QuestionCsvRow row) {
-        boolean hasCompanyName = row.getCompanyName() != null && !row.getCompanyName().trim().isEmpty();
-        boolean hasCompanyId = row.getCompanyId() != null && !row.getCompanyId().trim().isEmpty();
-        boolean hasCategoryName = row.getCategoryName() != null && !row.getCategoryName().trim().isEmpty();
-        boolean hasCategoryId = row.getCategoryId() != null && !row.getCategoryId().trim().isEmpty();
-
-        if (hasCompanyName && hasCompanyId) {
-            throw new CsvProcessingException("company_name과 company_id는 동시에 사용할 수 없습니다.", "MUTUAL_EXCLUSION_VIOLATION", "company");
-        }
-
-        if (hasCategoryName && hasCategoryId) {
-            throw new CsvProcessingException("category_name과 category_id는 동시에 사용할 수 없습니다.", "MUTUAL_EXCLUSION_VIOLATION", "category");
-        }
+        // company_id와 category_id 지원 제거로 상호 배타 검증 불필요
+        // company_name과 category_name만 지원
     }
 
     private void validateForeignKeys(QuestionCsvRow row) {
-        // Company validation
-        if (row.getCompanyId() != null && !row.getCompanyId().trim().isEmpty()) {
-            try {
-                Long companyId = Long.parseLong(row.getCompanyId().trim());
-                if (!companyRepository.existsById(companyId)) {
-                    throw new CsvProcessingException("해당 회사 ID를 가진 레코드를 찾을 수 없습니다.", "FK_NOT_FOUND", "company_id");
-                }
-            } catch (NumberFormatException e) {
-                throw new CsvProcessingException("회사 ID는 숫자여야 합니다.", "INVALID_ID_FORMAT", "company_id");
-            }
-        }
-
+        // Company validation - company_name만 지원
         if (row.getCompanyName() != null && !row.getCompanyName().trim().isEmpty()) {
             if (!companyRepository.findByName(row.getCompanyName().trim()).isPresent()) {
                 throw new CsvProcessingException("해당 회사명을 가진 레코드를 찾을 수 없습니다.", "FK_NOT_FOUND", "company_name");
             }
         }
 
-        // Category validation
-        if (row.getCategoryId() != null && !row.getCategoryId().trim().isEmpty()) {
-            try {
-                Long categoryId = Long.parseLong(row.getCategoryId().trim());
-                if (!categoryRepository.existsById(categoryId)) {
-                    throw new CsvProcessingException("해당 카테고리 ID를 가진 레코드를 찾을 수 없습니다.", "FK_NOT_FOUND", "category_id");
-                }
-            } catch (NumberFormatException e) {
-                throw new CsvProcessingException("카테고리 ID는 숫자여야 합니다.", "INVALID_ID_FORMAT", "category_id");
-            }
-        }
-
+        // Category validation - category_name만 지원
         if (row.getCategoryName() != null && !row.getCategoryName().trim().isEmpty()) {
             if (!categoryRepository.findByName(row.getCategoryName().trim()).isPresent()) {
                 throw new CsvProcessingException("해당 카테고리명을 가진 레코드를 찾을 수 없습니다.", "FK_NOT_FOUND", "category_name");
@@ -307,21 +274,13 @@ public class QuestionCsvService {
             question.setYear(Integer.parseInt(row.getYear().trim()));
         }
 
-        // Company - 직접 companyName 저장
+        // Company - company_name 직접 저장
         if (row.getCompanyName() != null && !row.getCompanyName().trim().isEmpty()) {
             question.setCompanyName(row.getCompanyName().trim());
-        } else if (row.getCompanyId() != null && !row.getCompanyId().trim().isEmpty()) {
-            // company_id가 주어진 경우 company 이름으로 변환
-            String companyName = companyRepository.findById(Long.parseLong(row.getCompanyId().trim()))
-                    .map(company -> company.getName())
-                    .orElse(null);
-            question.setCompanyName(companyName);
         }
 
-        // Category
-        if (row.getCategoryId() != null && !row.getCategoryId().trim().isEmpty()) {
-            question.setCategoryId(Long.parseLong(row.getCategoryId().trim()));
-        } else if (row.getCategoryName() != null && !row.getCategoryName().trim().isEmpty()) {
+        // Category - category_name으로 category_id 조회
+        if (row.getCategoryName() != null && !row.getCategoryName().trim().isEmpty()) {
             Long categoryId = categoryRepository.findByName(row.getCategoryName().trim())
                     .map(category -> category.getId())
                     .orElse(null);

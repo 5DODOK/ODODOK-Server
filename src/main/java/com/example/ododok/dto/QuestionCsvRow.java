@@ -21,12 +21,6 @@ public class QuestionCsvRow {
     @CsvBindByName(column = "company_name")
     private String companyName;
 
-    @CsvBindByName(column = "company_id")
-    private String companyId;
-
     @CsvBindByName(column = "category_name")
     private String categoryName;
-
-    @CsvBindByName(column = "category_id")
-    private String categoryId;
 }
