@@ -37,8 +37,9 @@ public class Question {
     @Column(name = "question_year")
     private Integer year;
 
-    @Column(name = "company_name", length = 100)
-    private String companyName;
+    @ManyToOne
+    @JoinColumn(name = "company_id")
+    private Company company;
 
     @Column(name = "category_id")
     private Long categoryId;

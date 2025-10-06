@@ -15,10 +15,11 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
 
     Optional<Question> findByTitle(String title);
 
+    // company.name으로 수정
     @Query("SELECT q FROM Question q WHERE q.question = :question AND " +
-           "(:year IS NULL AND q.year IS NULL OR q.year = :year) AND " +
-           "(:companyName IS NULL AND q.companyName IS NULL OR q.companyName = :companyName) AND " +
-           "(:categoryId IS NULL AND q.categoryId IS NULL OR q.categoryId = :categoryId)")
+            "(:year IS NULL OR q.year = :year) AND " +
+            "(:companyName IS NULL OR q.company.name = :companyName) AND " +
+            "(:categoryId IS NULL OR q.categoryId = :categoryId)")
     Optional<Question> findByQuestionAndYearAndCompanyNameAndCategoryId(
             @Param("question") String question,
             @Param("year") Integer year,
@@ -28,22 +29,21 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     // Search methods
     @Query("SELECT q FROM Question q WHERE (q.isPublic = true OR q.createdBy = :userId)")
     org.springframework.data.domain.Page<Question> findAllByIsPublicTrueOrCreatedBy(
-            @Param("isPublic") boolean isPublic,
             @Param("userId") Long userId,
             org.springframework.data.domain.Pageable pageable);
 
     @Query("SELECT q FROM Question q WHERE " +
-           "(LOWER(q.question) LIKE :searchTerm OR LOWER(q.content) LIKE :searchTerm OR LOWER(q.title) LIKE :searchTerm) " +
-           "AND (q.isPublic = true OR q.createdBy = :userId)")
+            "(LOWER(q.question) LIKE :searchTerm OR LOWER(q.content) LIKE :searchTerm OR LOWER(q.title) LIKE :searchTerm) " +
+            "AND (q.isPublic = true OR q.createdBy = :userId)")
     org.springframework.data.domain.Page<Question> findByText(
             @Param("searchTerm") String searchTerm,
             @Param("userId") Long userId,
             org.springframework.data.domain.Pageable pageable);
 
     @Query("SELECT q FROM Question q WHERE " +
-           "(LOWER(q.question) LIKE :searchTerm OR LOWER(q.content) LIKE :searchTerm OR LOWER(q.title) LIKE :searchTerm) " +
-           "AND q.difficulty = :difficulty " +
-           "AND (q.isPublic = true OR q.createdBy = :userId)")
+            "(LOWER(q.question) LIKE :searchTerm OR LOWER(q.content) LIKE :searchTerm OR LOWER(q.title) LIKE :searchTerm) " +
+            "AND q.difficulty = :difficulty " +
+            "AND (q.isPublic = true OR q.createdBy = :userId)")
     org.springframework.data.domain.Page<Question> findByTextAndDifficulty(
             @Param("searchTerm") String searchTerm,
             @Param("difficulty") Integer difficulty,
@@ -51,9 +51,9 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
             org.springframework.data.domain.Pageable pageable);
 
     @Query("SELECT q FROM Question q WHERE " +
-           "(LOWER(q.question) LIKE :searchTerm OR LOWER(q.content) LIKE :searchTerm OR LOWER(q.title) LIKE :searchTerm) " +
-           "AND q.categoryId = :categoryId " +
-           "AND (q.isPublic = true OR q.createdBy = :userId)")
+            "(LOWER(q.question) LIKE :searchTerm OR LOWER(q.content) LIKE :searchTerm OR LOWER(q.title) LIKE :searchTerm) " +
+            "AND q.categoryId = :categoryId " +
+            "AND (q.isPublic = true OR q.createdBy = :userId)")
     org.springframework.data.domain.Page<Question> findByTextAndCategory(
             @Param("searchTerm") String searchTerm,
             @Param("categoryId") Long categoryId,
@@ -61,10 +61,10 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
             org.springframework.data.domain.Pageable pageable);
 
     @Query("SELECT q FROM Question q WHERE " +
-           "(LOWER(q.question) LIKE :searchTerm OR LOWER(q.content) LIKE :searchTerm OR LOWER(q.title) LIKE :searchTerm) " +
-           "AND q.difficulty = :difficulty " +
-           "AND q.categoryId = :categoryId " +
-           "AND (q.isPublic = true OR q.createdBy = :userId)")
+            "(LOWER(q.question) LIKE :searchTerm OR LOWER(q.content) LIKE :searchTerm OR LOWER(q.title) LIKE :searchTerm) " +
+            "AND q.difficulty = :difficulty " +
+            "AND q.categoryId = :categoryId " +
+            "AND (q.isPublic = true OR q.createdBy = :userId)")
     org.springframework.data.domain.Page<Question> findByTextAndDifficultyAndCategory(
             @Param("searchTerm") String searchTerm,
             @Param("difficulty") Integer difficulty,
@@ -72,12 +72,12 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
             @Param("userId") Long userId,
             org.springframework.data.domain.Pageable pageable);
 
-    // New search methods with year and company filters
+    // company.name으로 수정
     @Query("SELECT q FROM Question q WHERE " +
-           "(:searchTerm = '' OR LOWER(q.question) LIKE :searchTerm OR LOWER(q.content) LIKE :searchTerm OR LOWER(q.title) LIKE :searchTerm) " +
-           "AND (:year IS NULL OR q.year = :year) " +
-           "AND (:companyName IS NULL OR q.companyName = :companyName) " +
-           "AND (q.isPublic = true OR q.createdBy = :userId)")
+            "(:searchTerm = '' OR LOWER(q.question) LIKE :searchTerm OR LOWER(q.content) LIKE :searchTerm OR LOWER(q.title) LIKE :searchTerm) " +
+            "AND (:year IS NULL OR q.year = :year) " +
+            "AND (:companyName IS NULL OR q.company.name = :companyName) " +
+            "AND (q.isPublic = true OR q.createdBy = :userId)")
     org.springframework.data.domain.Page<Question> findByFilters(
             @Param("searchTerm") String searchTerm,
             @Param("year") Integer year,
@@ -86,12 +86,12 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
             org.springframework.data.domain.Pageable pageable);
 
     @Query("SELECT q FROM Question q WHERE " +
-           "(:searchTerm = '' OR LOWER(q.question) LIKE :searchTerm OR LOWER(q.content) LIKE :searchTerm OR LOWER(q.title) LIKE :searchTerm) " +
-           "AND (:difficulty IS NULL OR q.difficulty = :difficulty) " +
-           "AND (:year IS NULL OR q.year = :year) " +
-           "AND (:companyName IS NULL OR q.companyName = :companyName) " +
-           "AND (:categoryId IS NULL OR q.categoryId = :categoryId) " +
-           "AND (q.isPublic = true OR q.createdBy = :userId)")
+            "(:searchTerm = '' OR LOWER(q.question) LIKE :searchTerm OR LOWER(q.content) LIKE :searchTerm OR LOWER(q.title) LIKE :searchTerm) " +
+            "AND (:difficulty IS NULL OR q.difficulty = :difficulty) " +
+            "AND (:year IS NULL OR q.year = :year) " +
+            "AND (:companyName IS NULL OR q.company.name = :companyName) " +
+            "AND (:categoryId IS NULL OR q.categoryId = :categoryId) " +
+            "AND (q.isPublic = true OR q.createdBy = :userId)")
     org.springframework.data.domain.Page<Question> findByAllFilters(
             @Param("searchTerm") String searchTerm,
             @Param("difficulty") Integer difficulty,
@@ -101,18 +101,18 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
             @Param("userId") Long userId,
             org.springframework.data.domain.Pageable pageable);
 
-    // Count methods for facets
+    // Count methods - company.name으로 수정
     int countByDifficulty(Integer difficulty);
 
     @Query("SELECT COUNT(q) FROM Question q WHERE q.year = :year")
     int countByYear(@Param("year") Integer year);
 
-    @Query("SELECT COUNT(q) FROM Question q WHERE q.companyName = :companyName")
+    @Query("SELECT COUNT(q) FROM Question q WHERE q.company.name = :companyName")
     int countByCompanyName(@Param("companyName") String companyName);
 
     @Query("SELECT DISTINCT q.year FROM Question q WHERE q.year IS NOT NULL ORDER BY q.year DESC")
     java.util.List<Integer> findDistinctYears();
 
-    @Query("SELECT DISTINCT q.companyName FROM Question q WHERE q.companyName IS NOT NULL")
+    @Query("SELECT DISTINCT q.company.name FROM Question q WHERE q.company IS NOT NULL")
     java.util.List<String> findDistinctCompanyNames();
 }

@@ -97,7 +97,7 @@ public class ProblemService {
             questions = questionRepository.findAll().stream()
                     .filter(q -> q.getIsPublic())
                     .filter(q -> categoryId.equals(q.getCategoryId()))
-                    .filter(q -> finalCompanyName.equals(q.getCompanyName()))
+                    .filter(q -> finalCompanyName.equals(q.getCompany().getName()))
                     .collect(Collectors.toList());
         } else if (categoryId != null) {
             // Only category filter
@@ -109,7 +109,7 @@ public class ProblemService {
             // Only company filter
             questions = questionRepository.findAll().stream()
                     .filter(q -> q.getIsPublic())
-                    .filter(q -> finalCompanyName.equals(q.getCompanyName()))
+                    .filter(q -> finalCompanyName.equals(q.getCompany().getName()))
                     .collect(Collectors.toList());
         } else {
             // No filters, return all public questions

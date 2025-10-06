@@ -131,7 +131,7 @@ public class SearchService {
         result.setId(question.getId());
         result.setQuestion(question.getQuestion());
         result.setYear(question.getYear());
-        result.setCompanyName(question.getCompanyName());
+        result.setCompanyName(question.getCompany().getName());
         result.setCategoryId(question.getCategoryId());
         result.setDifficulty(question.getDifficulty());
         result.setDifficultyLabel(getDifficultyLabel(question.getDifficulty()));

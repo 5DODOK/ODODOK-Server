@@ -2,6 +2,7 @@ package com.example.ododok.service;
 
 import com.example.ododok.dto.CsvUploadResponse;
 import com.example.ododok.dto.QuestionCsvRow;
+import com.example.ododok.entity.Company;
 import com.example.ododok.entity.Question;
 import com.example.ododok.entity.User;
 import com.example.ododok.entity.UserRole;
@@ -274,9 +275,12 @@ public class QuestionCsvService {
             question.setYear(Integer.parseInt(row.getYear().trim()));
         }
 
-        // Company - company_name 직접 저장
+        // Company - Company 엔티티로 설정
         if (row.getCompanyName() != null && !row.getCompanyName().trim().isEmpty()) {
-            question.setCompanyName(row.getCompanyName().trim());
+            Company company = companyRepository.findByName(row.getCompanyName().trim())
+                    .orElseThrow(() -> new CsvProcessingException(
+                            "해당 회사를 찾을 수 없습니다.", "COMPANY_NOT_FOUND", "company_name"));
+            question.setCompany(company);
         }
 
         // Category - category_name으로 category_id 조회
@@ -296,10 +300,11 @@ public class QuestionCsvService {
         if ("question".equals(upsertKey)) {
             existing = questionRepository.findByQuestion(question.getQuestion());
         } else {
+            String companyName = question.getCompany() != null ? question.getCompany().getName() : null;
             existing = questionRepository.findByQuestionAndYearAndCompanyNameAndCategoryId(
                     question.getQuestion(),
                     question.getYear(),
-                    question.getCompanyName(),
+                    companyName,
                     question.getCategoryId()
             );
         }
@@ -309,7 +314,7 @@ public class QuestionCsvService {
             existingQuestion.setQuestion(question.getQuestion());
             existingQuestion.setDifficulty(question.getDifficulty());
             existingQuestion.setYear(question.getYear());
-            existingQuestion.setCompanyName(question.getCompanyName());
+            existingQuestion.setCompany(question.getCompany());
             existingQuestion.setCategoryId(question.getCategoryId());
             questionRepository.save(existingQuestion);
             return true; // Updated

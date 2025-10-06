@@ -3,6 +3,7 @@ package com.example.ododok.service;
 import com.example.ododok.dto.QuestionCreateRequest;
 import com.example.ododok.dto.QuestionUpdateRequest;
 import com.example.ododok.dto.QuestionResponse;
+import com.example.ododok.entity.Company;
 import com.example.ododok.entity.Question;
 import com.example.ododok.entity.User;
 import com.example.ododok.entity.UserRole;
@@ -90,16 +91,26 @@ public class QuestionService {
     private Question buildQuestion(QuestionCreateRequest request, Long userId) {
         Question question = new Question();
         question.setQuestion(request.getQuestion().trim());
-        question.setTitle(request.getQuestion().trim()); // Use question as title for backward compatibility
+        question.setTitle(request.getQuestion().trim());
         question.setCreatedBy(userId);
 
         // Difficulty 매핑
         String difficulty = request.getDifficulty() != null ? request.getDifficulty().toUpperCase() : "MEDIUM";
         question.setDifficulty(DIFFICULTY_MAPPING.get(difficulty));
 
-        // 선택적 필드 설정
+        // Company 설정
+        if (request.getCompanyName() != null && !request.getCompanyName().trim().isEmpty()) {
+            Company company = companyRepository.findByName(request.getCompanyName())
+                    .orElseGet(() -> {
+                        Company newCompany = new Company();
+                        newCompany.setName(request.getCompanyName());
+                        newCompany.setCreatedAt(LocalDateTime.now());
+                        return companyRepository.save(newCompany);
+                    });
+            question.setCompany(company);
+        }
+
         question.setYear(request.getYear());
-        question.setCompanyName(request.getCompanyName());
         question.setCategoryId(request.getCategoryId());
 
         return question;
@@ -219,16 +230,25 @@ public class QuestionService {
         if (request.getYear() != null) {
             question.setYear(request.getYear());
         }
+
+        // Company 업데이트
         if (request.getCompanyName() != null) {
-            question.setCompanyName(request.getCompanyName());
+            Company company = companyRepository.findByName(request.getCompanyName())
+                    .orElseGet(() -> {
+                        Company newCompany = new Company();
+                        newCompany.setName(request.getCompanyName());
+                        newCompany.setCreatedAt(LocalDateTime.now());
+                        return companyRepository.save(newCompany);
+                    });
+            question.setCompany(company);
         }
 
-        // 수정 메타데이터 설정
         question.setUpdatedBy(userId);
         question.setUpdatedAt(LocalDateTime.now());
     }
 
     private QuestionResponse mapToResponse(Question question) {
+        String companyName = question.getCompany() != null ? question.getCompany().getName() : null;
         return new QuestionResponse(
                 question.getId(),
                 question.getTitle(),
@@ -238,7 +258,7 @@ public class QuestionService {
                 question.getAnswer(),
                 question.getDifficulty(),
                 question.getYear(),
-                question.getCompanyName(),
+                companyName,
                 question.getCategoryId(),
                 question.getIsPublic(),
                 question.getCreatedAt(),
