@@ -3,8 +3,6 @@ package com.example.ododok.service;
 import com.example.ododok.dto.SearchRequest;
 import com.example.ododok.dto.SearchResponse;
 import com.example.ododok.entity.Question;
-import com.example.ododok.entity.User;
-import com.example.ododok.entity.UserRole;
 import com.example.ododok.exception.CsvProcessingException;
 import com.example.ododok.repository.QuestionRepository;
 import com.example.ododok.repository.UserRepository;
@@ -18,7 +16,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -29,7 +26,6 @@ import java.util.stream.Collectors;
 public class SearchService {
 
     private final QuestionRepository questionRepository;
-    private final UserRepository userRepository;
     private final CompanyRepository companyRepository;
 
     private static final List<String> VALID_SORT_OPTIONS = List.of("rel", "new", "old");
@@ -68,8 +64,8 @@ public class SearchService {
 
         return new SearchResponse(
                 Map.of(
-                    "year", request.getYear(),
-                    "company_name", companyName,
+                    "year", request.getYear() != null ?  request.getYear() : 0,
+                    "company_name", companyName != null ? companyName : "",
                     "sort", request.getSort()
                 ),
                 request.getPage(),
@@ -89,8 +85,8 @@ public class SearchService {
     private SearchResponse createEmptyResponse(SearchRequest request, long startTime, String companyName) {
         return new SearchResponse(
             Map.of(
-                "year", request.getYear(),
-                "company_name", companyName,
+                "year", request.getYear()  != null ?  request.getYear() : 0,
+                "company_name", companyName != null ? companyName : "",
                 "sort", request.getSort()
             ),
             request.getPage(),
