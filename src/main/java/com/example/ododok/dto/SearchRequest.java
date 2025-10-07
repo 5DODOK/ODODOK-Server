@@ -23,6 +23,10 @@ public class SearchRequest {
     @Min(value = 1, message = "카테고리 ID는 1 이상이어야 합니다.")
     private Long categoryId;
 
+    private String categoryName;
+
+    private String interviewType;
+
     private Integer year;
 
     @Min(value = 1, message = "회사 ID는 1 이상이어야 합니다.")

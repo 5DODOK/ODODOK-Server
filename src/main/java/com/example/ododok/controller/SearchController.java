@@ -28,6 +28,8 @@ public class SearchController {
             @RequestParam(value = "company_id", required = false) Long companyId,
             @RequestParam(value = "company_name", required = false) String companyName,
             @RequestParam(value = "category_id", required = false) Long categoryId,
+            @RequestParam(value = "category_name", required = false) String categoryName,
+            @RequestParam(value = "interview_type", required = false) String interviewType,
             @RequestParam(value = "sort", defaultValue = "rel") String sort,
             @RequestParam(value = "page", defaultValue = "1") int page,
             @RequestParam(value = "size", defaultValue = "20") int size,
@@ -42,6 +44,8 @@ public class SearchController {
             request.setCompanyId(companyId);
             request.setCompanyName(companyName);
             request.setCategoryId(categoryId);
+            request.setCategoryName(categoryName);
+            request.setInterviewType(interviewType);
             request.setSort(sort);
             request.setPage(page);
             request.setSize(size);

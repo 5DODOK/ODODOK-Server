@@ -29,6 +29,8 @@ public class SearchResponse {
         private Integer year;
         private String companyName;
         private Long categoryId;
+        private String categoryName;
+        private String interviewType;
         private Integer difficulty;
         private String difficultyLabel; // EASY, MEDIUM, HARD
         private LocalDateTime createdAt;

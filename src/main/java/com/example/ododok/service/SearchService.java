@@ -2,10 +2,11 @@ package com.example.ododok.service;
 
 import com.example.ododok.dto.SearchRequest;
 import com.example.ododok.dto.SearchResponse;
+import com.example.ododok.entity.Category;
 import com.example.ododok.entity.Question;
 import com.example.ododok.exception.CsvProcessingException;
+import com.example.ododok.repository.CategoryRepository;
 import com.example.ododok.repository.QuestionRepository;
-import com.example.ododok.repository.UserRepository;
 import com.example.ododok.repository.CompanyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,7 @@ public class SearchService {
 
     private final QuestionRepository questionRepository;
     private final CompanyRepository companyRepository;
+    private final CategoryRepository categoryRepository;
 
     private static final List<String> VALID_SORT_OPTIONS = List.of("rel", "new", "old");
 
@@ -39,35 +41,43 @@ public class SearchService {
     public SearchResponse search(SearchRequest request, Long userId) {
         long startTime = System.currentTimeMillis();
 
-        // 요청 검증
         validateSearchRequest(request);
 
-        // company_name 필터 직접 사용 (변환 불필요)
+        // company_name 처리
         String companyName = null;
         if (request.getCompanyId() != null) {
-            // company_id가 주어진 경우 company 이름으로 변환
             companyName = companyRepository.findById(request.getCompanyId())
                     .map(com.example.ododok.entity.Company::getName)
                     .orElse(null);
         } else if (request.getCompanyName() != null && !request.getCompanyName().trim().isEmpty()) {
-            // company_name이 주어진 경우 직접 사용
             companyName = request.getCompanyName().trim();
         }
 
-        // 문제만 검색
-        SearchResults questionResults = searchQuestions(request, userId, companyName);
+        // category (직무) 처리
+        Long categoryId = null;
+        if (request.getCategoryId() != null) {
+            categoryId = request.getCategoryId();
+        } else if (request.getCategoryName() != null && !request.getCategoryName().trim().isEmpty()) {
+            categoryId = categoryRepository.findByName(request.getCategoryName().trim())
+                    .map(Category::getId)
+                    .orElse(null);
+        }
+
+        // 문제 검색
+        SearchResults questionResults = searchQuestions(request, userId, companyName, categoryId);
 
         // 패싯 계산
         Map<String, Object> facets = calculateFacets(request);
 
-        long tookMs = System.currentTimeMillis() - startTime;
+        Map<String, Object> params = new HashMap<>();
+        params.put("year", request.getYear());
+        params.put("company_name", companyName);
+        params.put("category_id", categoryId);
+        params.put("interview_type", request.getInterviewType());
+        params.put("sort", request.getSort());
 
         return new SearchResponse(
-                Map.of(
-                    "year", request.getYear() != null ?  request.getYear() : 0,
-                    "company_name", companyName != null ? companyName : "",
-                    "sort", request.getSort()
-                ),
+                params,
                 request.getPage(),
                 request.getSize(),
                 questionResults.total,
@@ -82,44 +92,65 @@ public class SearchService {
         }
     }
 
-    private SearchResponse createEmptyResponse(SearchRequest request, long startTime, String companyName) {
+    private SearchResponse createEmptyResponse(SearchRequest request, long startTime, String companyName, Long categoryId) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("year", request.getYear());
+        params.put("company_name", companyName);
+        params.put("category_id", categoryId);
+        params.put("sort", request.getSort());
+
         return new SearchResponse(
-            Map.of(
-                "year", request.getYear()  != null ?  request.getYear() : 0,
-                "company_name", companyName != null ? companyName : "",
-                "sort", request.getSort()
-            ),
-            request.getPage(),
-            request.getSize(),
-            0L,
-            new ArrayList<>(),
-            calculateFacets(request)
+                params,
+                request.getPage(),
+                request.getSize(),
+                0L,
+                new ArrayList<>(),
+                calculateFacets(request)
         );
     }
 
-    private SearchResults searchQuestions(SearchRequest request, Long userId, String companyName) {
-        // 정렬 설정
+    private SearchResults searchQuestions(SearchRequest request, Long userId, String companyName, Long categoryId) {
         Sort sort = createSort(request.getSort());
         Pageable pageable = PageRequest.of(request.getPage() - 1, request.getSize(), sort);
 
-        // 필터링을 사용하여 검색 (텍스트 검색 제거)
+        // null 값을 안전하게 처리
+        String safeKeyword = null;  // 키워드가 없으면 null
+        String safeCompanyName = (companyName != null && !companyName.trim().isEmpty()) ? companyName : null;
+        String safeInterviewType = (request.getInterviewType() != null && !request.getInterviewType().trim().isEmpty())
+                ? request.getInterviewType().trim() : null;
+
+        // 디버깅 로그 추가
+        log.info("========== Search Debug ==========");
+        log.info("Original interviewType: '{}'", request.getInterviewType());
+        log.info("Safe interviewType: '{}'", safeInterviewType);
+        log.info("Year: {}", request.getYear());
+        log.info("CompanyName: '{}'", safeCompanyName);
+        log.info("CategoryId: {}", categoryId);
+
         Page<Question> questionPage = questionRepository.findByAllFilters(
-                "", // 텍스트 검색 제거
-                null, // 난이도 필터 제거
+                safeKeyword,
+                null,  // difficulty
                 request.getYear(),
-                companyName,
-                request.getCategoryId(),
+                safeCompanyName,
+                categoryId,
+                safeInterviewType,
                 userId,
                 pageable);
 
+        log.info("Found {} questions", questionPage.getTotalElements());
+
         List<SearchResponse.SearchResult> results = questionPage.getContent().stream()
-                .map(this::mapQuestionToSearchResult)
+                .map(question -> {
+                    SearchResponse.SearchResult result = mapQuestionToSearchResult(question);
+                    log.info("Question ID: {}, Title: '{}'", question.getId(), question.getTitle());
+                    return result;
+                })
                 .collect(Collectors.toList());
+
+        log.info("==================================");
 
         return new SearchResults(results, questionPage.getTotalElements());
     }
-
-
 
     private SearchResponse.SearchResult mapQuestionToSearchResult(Question question) {
         SearchResponse.SearchResult result = new SearchResponse.SearchResult();
@@ -129,14 +160,13 @@ public class SearchService {
         result.setYear(question.getYear());
         result.setCompanyName(question.getCompany().getName());
         result.setCategoryId(question.getCategoryId());
+        result.setCategoryName(question.getCategory() != null ? question.getCategory().getName() : null);
+        result.setInterviewType(question.getTitle());  // title을 면접 유형으로
         result.setDifficulty(question.getDifficulty());
         result.setDifficultyLabel(getDifficultyLabel(question.getDifficulty()));
         result.setCreatedAt(question.getCreatedAt());
         return result;
     }
-
-
-
 
     private Sort createSort(String sortOption) {
         return switch (sortOption) {
@@ -149,7 +179,6 @@ public class SearchService {
         };
     }
 
-
     private String getDifficultyLabel(Integer difficulty) {
         if (difficulty == null) return null;
         return switch (difficulty) {
@@ -159,7 +188,6 @@ public class SearchService {
             default -> null;
         };
     }
-
 
     private Map<String, Object> calculateFacets(SearchRequest request) {
         Map<String, Object> facets = new HashMap<>();
@@ -181,7 +209,6 @@ public class SearchService {
         for (String companyName : companyNames) {
             if (companyName != null) {
                 Map<String, Object> companyFacet = new HashMap<>();
-                // company_name 기반이므로 id는 company 테이블에서 조회
                 Long companyId = companyRepository.findByName(companyName)
                         .map(com.example.ododok.entity.Company::getId)
                         .orElse(null);
@@ -192,6 +219,31 @@ public class SearchService {
             }
         }
         facets.put("company", companyFacets);
+
+        // 직무 카테고리 패싯
+        List<Category> categories = categoryRepository.findAll();
+        List<Map<String, Object>> categoryFacets = new ArrayList<>();
+        for (Category category : categories) {
+            Map<String, Object> categoryFacet = new HashMap<>();
+            categoryFacet.put("id", category.getId());
+            categoryFacet.put("name", category.getName());
+            categoryFacet.put("count", questionRepository.countByCategoryId(category.getId()));
+            categoryFacets.add(categoryFacet);
+        }
+        facets.put("category", categoryFacets);
+
+        // 면접 유형 패싯
+        List<String> interviewTypes = questionRepository.findDistinctInterviewTypes();
+        List<Map<String, Object>> interviewTypeFacets = new ArrayList<>();
+        for (String interviewType : interviewTypes) {
+            if (interviewType != null) {
+                Map<String, Object> interviewTypeFacet = new HashMap<>();
+                interviewTypeFacet.put("name", interviewType);
+                interviewTypeFacet.put("count", questionRepository.countByInterviewType(interviewType));
+                interviewTypeFacets.add(interviewTypeFacet);
+            }
+        }
+        facets.put("interview_type", interviewTypeFacets);
 
         return facets;
     }
