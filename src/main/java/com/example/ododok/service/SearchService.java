@@ -140,9 +140,12 @@ public class SearchService {
 
     private Sort createSort(String sortOption) {
         return switch (sortOption) {
-            case "new" -> Sort.by(Sort.Direction.DESC, "createdAt");
-            case "old" -> Sort.by(Sort.Direction.ASC, "createdAt");
-            default -> Sort.by(Sort.Direction.DESC, "createdAt"); // rel 기본값
+            case "new" -> Sort.by(Sort.Direction.DESC, "createdAt")
+                    .and(Sort.by(Sort.Direction.DESC, "id"));
+            case "old" -> Sort.by(Sort.Direction.ASC, "createdAt")
+                    .and(Sort.by(Sort.Direction.ASC, "id"));
+            default -> Sort.by(Sort.Direction.DESC, "createdAt")
+                    .and(Sort.by(Sort.Direction.DESC, "id"));
         };
     }
 
