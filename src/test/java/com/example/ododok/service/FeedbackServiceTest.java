@@ -18,7 +18,7 @@ import static org.mockito.Mockito.when;
 class FeedbackServiceTest {
 
     @Mock
-    private HuggingFaceService huggingFaceService;
+    private GeminiService geminiService;
 
     @InjectMocks
     private FeedbackService feedbackService;
@@ -38,9 +38,9 @@ class FeedbackServiceTest {
     void generateFeedback_Success() {
         // given
         String mockAiFeedback = "좋은 답변이에요! 호이스팅에 대해 정확히 이해하고 계시네요. 추가로 var, let, const의 차이점도 알아두면 좋을 것 같아요!";
-        when(huggingFaceService.generateFeedback(anyString(), anyString()))
+        when(geminiService.generateFeedback(anyString(), anyString()))
                 .thenReturn(mockAiFeedback);
-        when(huggingFaceService.extractAdditionalTip(anyString()))
+        when(geminiService.extractAdditionalTip(anyString()))
                 .thenReturn("var, let, const의 차이점도 알아두면 좋을 것 같아요!");
 
         // when
@@ -56,7 +56,7 @@ class FeedbackServiceTest {
     @DisplayName("피드백 생성 - Hugging Face 서비스 오류시 기본 피드백 반환")
     void generateFeedback_HuggingFaceError_ReturnsDefault() {
         // given
-        when(huggingFaceService.generateFeedback(anyString(), anyString()))
+        when(geminiService.generateFeedback(anyString(), anyString()))
                 .thenThrow(new RuntimeException("API 오류"));
 
         // when
@@ -72,9 +72,9 @@ class FeedbackServiceTest {
     @DisplayName("피드백 생성 - 빈 AI 응답시 기본 피드백 사용")
     void generateFeedback_EmptyAiResponse_UseDefault() {
         // given
-        when(huggingFaceService.generateFeedback(anyString(), anyString()))
+        when(geminiService.generateFeedback(anyString(), anyString()))
                 .thenReturn("");
-        when(huggingFaceService.extractAdditionalTip(anyString()))
+        when(geminiService.extractAdditionalTip(anyString()))
                 .thenReturn("계속해서 다양한 문제를 풀어보시며 실력을 향상시켜보세요!");
 
         // when
@@ -93,9 +93,9 @@ class FeedbackServiceTest {
         FeedbackRequest shortAnswer = new FeedbackRequest("A", "JavaScript에서 호이스팅이란?");
         String mockFeedback = "간단한 답변이네요. 더 자세히 설명해보시면 좋을 것 같아요.";
 
-        when(huggingFaceService.generateFeedback(anyString(), anyString()))
+        when(geminiService.generateFeedback(anyString(), anyString()))
                 .thenReturn(mockFeedback);
-        when(huggingFaceService.extractAdditionalTip(anyString()))
+        when(geminiService.extractAdditionalTip(anyString()))
                 .thenReturn("구체적인 예시를 들어보시면 더 좋을 것 같아요!");
 
         // when
