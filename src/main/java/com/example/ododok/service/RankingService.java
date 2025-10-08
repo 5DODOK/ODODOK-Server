@@ -24,7 +24,8 @@ public class RankingService {
                 .map(user -> new RankingResponse.UserRanking(
                         rank.getAndIncrement(),
                         user.getName(),
-                        user.getPoints()
+                        user.getPoints(),
+                        user.getProfileImageUrl()
                 ))
                 .toList();
 
@@ -35,7 +36,8 @@ public class RankingService {
                     .mapToObj(i -> new RankingResponse.UserRanking(
                             i + 1,
                             allUsers.get(i).getName(),
-                            allUsers.get(i).getPoints()
+                            allUsers.get(i).getPoints(),
+                            allUsers.get(i).getProfileImageUrl()
                     ))
                     .findFirst()
                     .orElse(null);

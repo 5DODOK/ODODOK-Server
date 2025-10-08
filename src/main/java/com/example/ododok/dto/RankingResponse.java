@@ -21,5 +21,6 @@ public class RankingResponse {
         private Integer rank;
         private String username;
         private Integer points;
+        private String profileImageUrl;
     }
 }
