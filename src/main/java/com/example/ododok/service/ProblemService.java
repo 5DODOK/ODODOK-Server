@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Map;
@@ -36,29 +38,25 @@ public class ProblemService {
                 .collect(Collectors.toList());
 
         List<Question> questions = questionRepository.findAllById(questionIds);
-
         if (questions.size() != questionIds.size()) {
             throw new RuntimeException("일부 문제를 찾을 수 없습니다.");
         }
 
-        Map<Long, String> correctAnswerMap = questions.stream()
-                .collect(Collectors.toMap(Question::getId, Question::getAnswer));
-
-        int correctAnswers = 0;
-        for (ProblemSubmissionRequest.Answer answer : request.getAnswers()) {
-            String correctAnswer = correctAnswerMap.get(answer.getQuestionId());
-            if (correctAnswer != null && correctAnswer.equals(answer.getAnswer())) {
-                correctAnswers++;
-            }
-        }
-
         int totalQuestions = request.getAnswers().size();
-        int score = (int) Math.round((double) correctAnswers / totalQuestions * 100);
-        int pointsEarned = correctAnswers * 100;
 
+        // 문제 1개당 100포인트씩 지급
+        int pointsPerQuestion = 100;
+        int pointsEarned = totalQuestions * pointsPerQuestion;
+
+        // 총 점수는 참여도 개념으로 100점 만점 처리
+        int score = 100;
+        int correctAnswers = totalQuestions;
+
+        // 유저 포인트 업데이트
         user.setPoints(user.getPoints() + pointsEarned);
         userRepository.save(user);
 
+        // 랭크 재계산
         List<User> allUsers = userRepository.findAllByOrderByPointsDescUserIdAsc();
         int rank = 1;
         for (int i = 0; i < allUsers.size(); i++) {
@@ -69,7 +67,7 @@ public class ProblemService {
         }
 
         return new ProblemSubmissionResponse(
-                "제출 완료!",
+                "제출 완료! 포인트가 지급되었습니다 🎉",
                 score,
                 correctAnswers,
                 pointsEarned,
@@ -78,51 +76,26 @@ public class ProblemService {
     }
 
     public QuestionListResponse getQuestions(Long categoryId, Long companyId) {
-        log.info("Fetching questions with categoryId: {} and companyId: {}", categoryId, companyId);
+        log.info("Fetching random filtered questions with categoryId: {} and companyId: {}", categoryId, companyId);
 
-        List<Question> questions;
         String companyName = null;
 
-        // companyId를 companyName으로 변환
+        // companyId → companyName 변환
         if (companyId != null) {
             companyName = companyRepository.findById(companyId)
                     .map(company -> company.getName())
                     .orElse(null);
         }
 
-        final String finalCompanyName = companyName;
-
-        if (categoryId != null && finalCompanyName != null) {
-            // Both filters applied
-            questions = questionRepository.findAll().stream()
-                    .filter(q -> q.getIsPublic())
-                    .filter(q -> categoryId.equals(q.getCategoryId()))
-                    .filter(q -> finalCompanyName.equals(q.getCompany().getName()))
-                    .collect(Collectors.toList());
-        } else if (categoryId != null) {
-            // Only category filter
-            questions = questionRepository.findAll().stream()
-                    .filter(q -> q.getIsPublic())
-                    .filter(q -> categoryId.equals(q.getCategoryId()))
-                    .collect(Collectors.toList());
-        } else if (finalCompanyName != null) {
-            // Only company filter
-            questions = questionRepository.findAll().stream()
-                    .filter(q -> q.getIsPublic())
-                    .filter(q -> finalCompanyName.equals(q.getCompany().getName()))
-                    .collect(Collectors.toList());
-        } else {
-            // No filters, return all public questions
-            questions = questionRepository.findAll().stream()
-                    .filter(q -> q.getIsPublic())
-                    .collect(Collectors.toList());
-        }
+        // DB에서 바로 랜덤 10개만 조회
+        Pageable pageable = PageRequest.of(0, 10);
+        List<Question> questions = questionRepository.findRandomQuestionsWithFilters(categoryId, companyName, pageable);
 
         List<QuestionListResponse.QuestionItem> questionItems = questions.stream()
                 .map(q -> new QuestionListResponse.QuestionItem(q.getId(), q.getQuestion()))
                 .collect(Collectors.toList());
 
-        log.info("Found {} questions matching the criteria", questionItems.size());
+        log.info("🎯 Found {} random filtered questions (max 10)", questionItems.size());
 
         return new QuestionListResponse(questionItems);
     }

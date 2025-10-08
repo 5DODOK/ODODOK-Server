@@ -16,6 +16,17 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
 
     Optional<Question> findByTitle(String title);
 
+    @Query("SELECT q FROM Question q " +
+            "WHERE q.isPublic = true " +
+            "AND (:categoryId IS NULL OR q.categoryId = :categoryId) " +
+            "AND (:companyName IS NULL OR q.company.name = :companyName) " +
+            "ORDER BY FUNCTION('RANDOM')")
+    List<Question> findRandomQuestionsWithFilters(
+            @Param("categoryId") Long categoryId,
+            @Param("companyName") String companyName,
+            org.springframework.data.domain.Pageable pageable
+    );
+
     // company.name으로 수정
     @Query("SELECT q FROM Question q WHERE q.question = :question AND " +
             "(:year IS NULL OR q.year = :year) AND " +
