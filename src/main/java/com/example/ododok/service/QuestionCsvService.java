@@ -44,7 +44,9 @@ public class QuestionCsvService {
     @Value("${csv.upload.upsert-key:question}")
     private String upsertKey;
 
+    // ✅ title 포함된 헤더 조합 추가
     private static final Set<String> VALID_HEADER_COMBINATIONS = Set.of(
+            "question,title,difficulty,year,company_name,category_name",
             "question,difficulty,year,company_name,category_name",
             "question,difficulty,year"
     );
@@ -63,9 +65,7 @@ public class QuestionCsvService {
         try (Reader reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8)) {
             List<QuestionCsvRow> rows = parseCsvFile(reader);
             validateRowCount(rows);
-
             return processRows(rows, dryRun, userId);
-
         } catch (CsvProcessingException e) {
             throw e;
         } catch (Exception e) {
@@ -87,11 +87,9 @@ public class QuestionCsvService {
         if (file.isEmpty()) {
             throw new CsvProcessingException("업로드된 파일이 비어있습니다.", "EMPTY_FILE");
         }
-
         if (file.getSize() > maxFileSize) {
             throw new CsvProcessingException("업로드 가능한 최대 크기를 초과했습니다.", "FILE_SIZE_EXCEEDED");
         }
-
         String contentType = file.getContentType();
         if (contentType == null || (!contentType.equals("text/csv") && !contentType.equals("application/csv"))) {
             throw new CsvProcessingException("CSV만 허용됩니다.", "INVALID_CONTENT_TYPE");
@@ -102,13 +100,11 @@ public class QuestionCsvService {
         try {
             HeaderColumnNameMappingStrategy<QuestionCsvRow> strategy = new HeaderColumnNameMappingStrategy<>();
             strategy.setType(QuestionCsvRow.class);
-
             return new CsvToBeanBuilder<QuestionCsvRow>(reader)
                     .withMappingStrategy(strategy)
                     .withIgnoreLeadingWhiteSpace(true)
                     .build()
                     .parse();
-
         } catch (Exception e) {
             throw new CsvProcessingException("유효하지 않은 CSV 형식입니다.", "INVALID_CSV_FORMAT");
         }
@@ -119,18 +115,12 @@ public class QuestionCsvService {
             Scanner scanner = new Scanner(reader);
             if (scanner.hasNextLine()) {
                 String headerLine = scanner.nextLine().trim();
-
-                // Split and clean each header
                 String[] headers = Arrays.stream(headerLine.split(","))
                         .map(String::trim)
                         .map(String::toLowerCase)
                         .toArray(String[]::new);
-
                 String normalizedHeader = String.join(",", headers);
-
-                boolean isValidCombination = VALID_HEADER_COMBINATIONS.contains(normalizedHeader);
-
-                if (!isValidCombination) {
+                if (!VALID_HEADER_COMBINATIONS.contains(normalizedHeader)) {
                     throw new CsvProcessingException("CSV 헤더가 사양과 일치하지 않습니다.", "HEADER_MISMATCH");
                 }
             }
@@ -155,68 +145,46 @@ public class QuestionCsvService {
         int created = 0, updated = 0, skipped = 0;
 
         for (int i = 0; i < rows.size(); i++) {
-            int rowNumber = i + 2; // Header is row 1, data starts from row 2
+            int rowNumber = i + 2;
             try {
                 QuestionCsvRow row = rows.get(i);
                 validateRow(row, rowNumber);
-
                 Question question = convertToQuestion(row, userId);
 
                 if (!dryRun) {
                     boolean isUpdate = saveOrUpdateQuestion(question);
-                    if (isUpdate) {
-                        updated++;
-                    } else {
-                        created++;
-                    }
-                } else {
-                    created++; // For dry run, count as potential creation
-                }
-
+                    if (isUpdate) updated++;
+                    else created++;
+                } else created++;
             } catch (CsvProcessingException e) {
-                errors.add(new CsvUploadResponse.ValidationError(
-                        rowNumber, e.getErrorCode(), e.getField(), e.getMessage()
-                ));
+                errors.add(new CsvUploadResponse.ValidationError(rowNumber, e.getErrorCode(), e.getField(), e.getMessage()));
                 skipped++;
             } catch (Exception e) {
                 log.error("Unexpected error processing row {}", rowNumber, e);
-                errors.add(new CsvUploadResponse.ValidationError(
-                        rowNumber, "PROCESSING_ERROR", null, "행 처리 중 예상치 못한 오류가 발생했습니다."
-                ));
+                errors.add(new CsvUploadResponse.ValidationError(rowNumber, "PROCESSING_ERROR", null, "행 처리 중 오류"));
                 skipped++;
             }
         }
 
-        CsvUploadResponse.Summary summary = new CsvUploadResponse.Summary(
-                rows.size(),
-                dryRun ? 0 : created,
-                dryRun ? 0 : updated,
-                skipped,
-                dryRun,
-                upsertKey
+        return new CsvUploadResponse(
+                new CsvUploadResponse.Summary(rows.size(), dryRun ? 0 : created, dryRun ? 0 : updated, skipped, dryRun, upsertKey),
+                errors
         );
-
-        return new CsvUploadResponse(summary, errors);
     }
 
     private void validateRow(QuestionCsvRow row, int rowNumber) {
-        // Question validation
-        if (row.getQuestion() == null || row.getQuestion().trim().isEmpty()) {
+        if (row.getQuestion() == null || row.getQuestion().trim().isEmpty())
             throw new CsvProcessingException("질문은 필수입니다.", "REQUIRED_FIELD_MISSING", "question");
-        }
-        if (row.getQuestion().length() > 200) {
-            throw new CsvProcessingException("질문은 최대 200자까지 허용됩니다.", "FIELD_TOO_LONG", "question");
-        }
 
-        // Difficulty validation
+        if (row.getQuestion().length() > 200)
+            throw new CsvProcessingException("질문은 최대 200자까지 허용됩니다.", "FIELD_TOO_LONG", "question");
+
         if (row.getDifficulty() != null && !row.getDifficulty().trim().isEmpty()) {
             String difficulty = row.getDifficulty().trim().toUpperCase();
-            if (!DIFFICULTY_MAPPING.containsKey(difficulty) && !isNumeric(difficulty)) {
+            if (!DIFFICULTY_MAPPING.containsKey(difficulty) && !isNumeric(difficulty))
                 throw new CsvProcessingException("허용 라벨은 EASY, MEDIUM, HARD 입니다.", "INVALID_DIFFICULTY_LABEL", "difficulty");
-            }
         }
 
-        // Year validation
         if (row.getYear() != null && !row.getYear().trim().isEmpty()) {
             try {
                 Integer.parseInt(row.getYear().trim());
@@ -225,32 +193,17 @@ public class QuestionCsvService {
             }
         }
 
-        // Mutual exclusion validation
-        validateMutualExclusion(row);
-
-        // FK validation
         validateForeignKeys(row);
     }
 
-    private void validateMutualExclusion(QuestionCsvRow row) {
-        // company_id와 category_id 지원 제거로 상호 배타 검증 불필요
-        // company_name과 category_name만 지원
-    }
-
     private void validateForeignKeys(QuestionCsvRow row) {
-        // Company validation - company_name만 지원
-        if (row.getCompanyName() != null && !row.getCompanyName().trim().isEmpty()) {
-            if (!companyRepository.findByName(row.getCompanyName().trim()).isPresent()) {
-                throw new CsvProcessingException("해당 회사명을 가진 레코드를 찾을 수 없습니다.", "FK_NOT_FOUND", "company_name");
-            }
-        }
+        if (row.getCompanyName() != null && !row.getCompanyName().trim().isEmpty())
+            companyRepository.findByName(row.getCompanyName().trim())
+                    .orElseThrow(() -> new CsvProcessingException("해당 회사명을 가진 레코드를 찾을 수 없습니다.", "FK_NOT_FOUND", "company_name"));
 
-        // Category validation - category_name만 지원
-        if (row.getCategoryName() != null && !row.getCategoryName().trim().isEmpty()) {
-            if (!categoryRepository.findByName(row.getCategoryName().trim()).isPresent()) {
-                throw new CsvProcessingException("해당 카테고리명을 가진 레코드를 찾을 수 없습니다.", "FK_NOT_FOUND", "category_name");
-            }
-        }
+        if (row.getCategoryName() != null && !row.getCategoryName().trim().isEmpty())
+            categoryRepository.findByName(row.getCategoryName().trim())
+                    .orElseThrow(() -> new CsvProcessingException("해당 카테고리명을 가진 레코드를 찾을 수 없습니다.", "FK_NOT_FOUND", "category_name"));
     }
 
     private Question convertToQuestion(QuestionCsvRow row, Long userId) {
@@ -258,36 +211,33 @@ public class QuestionCsvService {
         question.setQuestion(row.getQuestion().trim());
         question.setCreatedBy(userId);
 
-        // Difficulty mapping
+        // ✅ title 처리 추가
+        if (row.getTitle() != null && !row.getTitle().trim().isEmpty())
+            question.setTitle(row.getTitle().trim());
+        else
+            question.setTitle("기술면접"); // 기본값
+
+        // 난이도
         if (row.getDifficulty() != null && !row.getDifficulty().trim().isEmpty()) {
             String difficulty = row.getDifficulty().trim().toUpperCase();
-            if (DIFFICULTY_MAPPING.containsKey(difficulty)) {
-                question.setDifficulty(DIFFICULTY_MAPPING.get(difficulty));
-            } else if (isNumeric(difficulty)) {
-                question.setDifficulty(Integer.parseInt(difficulty));
-            }
-        } else {
-            question.setDifficulty(2); // Default MEDIUM
-        }
+            question.setDifficulty(DIFFICULTY_MAPPING.getOrDefault(difficulty, 2));
+        } else question.setDifficulty(2);
 
-        // Year
-        if (row.getYear() != null && !row.getYear().trim().isEmpty()) {
+        // 연도
+        if (row.getYear() != null && !row.getYear().trim().isEmpty())
             question.setYear(Integer.parseInt(row.getYear().trim()));
-        }
 
-        // Company - Company 엔티티로 설정
+        // 회사
         if (row.getCompanyName() != null && !row.getCompanyName().trim().isEmpty()) {
             Company company = companyRepository.findByName(row.getCompanyName().trim())
-                    .orElseThrow(() -> new CsvProcessingException(
-                            "해당 회사를 찾을 수 없습니다.", "COMPANY_NOT_FOUND", "company_name"));
+                    .orElseThrow(() -> new CsvProcessingException("해당 회사를 찾을 수 없습니다.", "COMPANY_NOT_FOUND", "company_name"));
             question.setCompany(company);
         }
 
-        // Category - category_name으로 category_id 조회
+        // 카테고리
         if (row.getCategoryName() != null && !row.getCategoryName().trim().isEmpty()) {
             Long categoryId = categoryRepository.findByName(row.getCategoryName().trim())
-                    .map(category -> category.getId())
-                    .orElse(null);
+                    .map(c -> c.getId()).orElse(null);
             question.setCategoryId(categoryId);
         }
 
@@ -296,49 +246,42 @@ public class QuestionCsvService {
 
     private boolean saveOrUpdateQuestion(Question question) {
         Optional<Question> existing;
-
         if ("question".equals(upsertKey)) {
             existing = questionRepository.findByQuestion(question.getQuestion());
         } else {
             String companyName = question.getCompany() != null ? question.getCompany().getName() : null;
             existing = questionRepository.findByQuestionAndYearAndCompanyNameAndCategoryId(
-                    question.getQuestion(),
-                    question.getYear(),
-                    companyName,
-                    question.getCategoryId()
+                    question.getQuestion(), question.getYear(), companyName, question.getCategoryId()
             );
         }
 
         if (existing.isPresent()) {
             Question existingQuestion = existing.get();
             existingQuestion.setQuestion(question.getQuestion());
+            existingQuestion.setTitle(question.getTitle()); // ✅ title 업데이트 추가
             existingQuestion.setDifficulty(question.getDifficulty());
             existingQuestion.setYear(question.getYear());
             existingQuestion.setCompany(question.getCompany());
             existingQuestion.setCategoryId(question.getCategoryId());
             questionRepository.save(existingQuestion);
-            return true; // Updated
+            return true;
         } else {
             questionRepository.save(question);
-            return false; // Created
-        }
-    }
-
-    private boolean isNumeric(String str) {
-        try {
-            Integer.parseInt(str);
-            return true;
-        } catch (NumberFormatException e) {
             return false;
         }
     }
 
+    private boolean isNumeric(String str) {
+        try { Integer.parseInt(str); return true; } catch (NumberFormatException e) { return false; }
+    }
+
+    // ✅ 샘플 CSV에 title 포함
     public String generateSampleCsv() {
         StringBuilder csv = new StringBuilder();
-        csv.append("question,difficulty,year,company_name,category_name\n");
-        csv.append("\"자바에서 HashMap과 TreeMap의 차이점은 무엇인가요?\",MEDIUM,2024,\"네이버\",\"자료구조\"\n");
-        csv.append("\"React에서 useState Hook을 사용하는 이유는?\",EASY,2024,\"카카오\",\"프론트엔드\"\n");
-        csv.append("\"데이터베이스 인덱스의 장단점을 설명하세요\",HARD,2023,\"삼성전자\",\"데이터베이스\"\n");
+        csv.append("question,title,difficulty,year,company_name,category_name\n");
+        csv.append("\"자바에서 HashMap과 TreeMap의 차이점은 무엇인가요?\",\"기술면접\",MEDIUM,2024,\"네이버\",\"백엔드\"\n");
+        csv.append("\"React에서 useState Hook을 사용하는 이유는?\",\"기술면접\",EASY,2024,\"카카오\",\"프론트엔드\"\n");
+        csv.append("\"데이터베이스 인덱스의 장단점을 설명하세요\",\"기술면접\",HARD,2023,\"삼성전자\",\"데이터베이스\"\n");
         return csv.toString();
     }
 }

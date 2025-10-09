@@ -23,4 +23,7 @@ public class QuestionCsvRow {
 
     @CsvBindByName(column = "category_name")
     private String categoryName;
+
+    @CsvBindByName
+    private String title;
 }
