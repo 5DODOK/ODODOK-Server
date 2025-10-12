@@ -14,7 +14,6 @@ import com.example.ododok.repository.QuestionRepository;
 import com.example.ododok.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,11 +69,6 @@ public class QuestionService {
     }
 
     private void validateCreateRequest(QuestionCreateRequest request) {
-        // Company Name 검증
-        if (request.getCompanyName() != null && !request.getCompanyName().trim().isEmpty()) {
-            // Company name은 자유 입력 가능, 별도 검증 불필요
-        }
-
         // Category ID 검증
         if (request.getCategoryId() != null) {
             if (!categoryRepository.existsById(request.getCategoryId())) {
@@ -90,8 +84,13 @@ public class QuestionService {
 
     private Question buildQuestion(QuestionCreateRequest request, Long userId) {
         Question question = new Question();
+
+        // 질문 내용
         question.setQuestion(request.getQuestion().trim());
-        question.setTitle(request.getQuestion().trim());
+
+        // 면접 타입을 title 필드에 저장
+        question.setTitle(request.getInterviewType());
+
         question.setCreatedBy(userId);
 
         // Difficulty 매핑
@@ -100,25 +99,28 @@ public class QuestionService {
 
         // Company 설정
         if (request.getCompanyName() != null && !request.getCompanyName().trim().isEmpty()) {
-            Company company = companyRepository.findByName(request.getCompanyName())
-                    .orElseGet(() -> {
-                        Company newCompany = new Company();
-                        newCompany.setName(request.getCompanyName());
-                        newCompany.setCreatedAt(LocalDateTime.now());
-                        return companyRepository.save(newCompany);
-                    });
+            String companyName = request.getCompanyName().trim();
+            Company company = companyRepository.findByName(companyName)
+                    .orElseGet(() -> createNewCompany(companyName));
             question.setCompany(company);
         }
 
         question.setYear(request.getYear());
         question.setCategoryId(request.getCategoryId());
+        question.setIsPublic(true);
 
         return question;
     }
 
+    private Company createNewCompany(String companyName) {
+        Company newCompany = new Company();
+        newCompany.setName(companyName);
+        return companyRepository.save(newCompany);
+    }
+
     private void checkDuplicateQuestion(Question question) {
         if (questionRepository.findByQuestion(question.getQuestion()).isPresent()) {
-            throw new CsvProcessingException("동일한 제목의 질문이 이미 존재합니다.", "DUPLICATE_QUESTION");
+            throw new CsvProcessingException("동일한 질문이 이미 존재합니다.", "DUPLICATE_QUESTION");
         }
     }
 
@@ -133,9 +135,9 @@ public class QuestionService {
         // 요청 데이터 검증
         validateUpdateRequest(request);
 
-        // 제목 중복 검사 (제목이 변경되는 경우)
-        if (request.getTitle() != null && !request.getTitle().equals(question.getTitle())) {
-            checkDuplicateTitle(request.getTitle());
+        // 질문 중복 검사 (질문이 변경되는 경우)
+        if (request.getQuestion() != null && !request.getQuestion().equals(question.getQuestion())) {
+            checkDuplicateQuestionForUpdate(question.getId(), request.getQuestion().trim());
         }
 
         // 부분 업데이트 적용
@@ -171,75 +173,57 @@ public class QuestionService {
             }
         }
 
-        // Company Name 검증
-        if (request.getCompanyName() != null && !request.getCompanyName().trim().isEmpty()) {
-            // Company name은 자유 입력 가능, 별도 검증 불필요
-        }
-
         // Difficulty 검증
         if (request.getDifficulty() != null && !DIFFICULTY_MAPPING.containsKey(request.getDifficulty().toUpperCase())) {
             throw new CsvProcessingException("난이도는 EASY, MEDIUM, HARD 중 하나여야 합니다.", "INVALID_DIFFICULTY");
         }
 
-        // Title 공백 검증
-        if (request.getTitle() != null && request.getTitle().trim().isEmpty()) {
-            throw new CsvProcessingException("제목은 공백일 수 없습니다.", "INVALID_TITLE");
+        // Question 공백 검증
+        if (request.getQuestion() != null && request.getQuestion().trim().isEmpty()) {
+            throw new CsvProcessingException("질문은 공백일 수 없습니다.", "INVALID_QUESTION");
         }
 
-        // Tags 검증
-        if (request.getTags() != null) {
-            if (request.getTags().size() > 10) {
-                throw new CsvProcessingException("태그는 최대 10개까지 허용됩니다.", "TOO_MANY_TAGS");
-            }
-            for (String tag : request.getTags()) {
-                if (tag.length() > 30) {
-                    throw new CsvProcessingException("각 태그는 최대 30자까지 허용됩니다.", "TAG_TOO_LONG");
-                }
+        // Interview Type 검증
+        if (request.getInterviewType() != null) {
+            if (!request.getInterviewType().equals("기술면접") && !request.getInterviewType().equals("인성면접")) {
+                throw new CsvProcessingException("면접 타입은 '기술면접' 또는 '인성면접'이어야 합니다.", "INVALID_INTERVIEW_TYPE");
             }
         }
     }
 
-    private void checkDuplicateTitle(String title) {
-        if (questionRepository.findByTitle(title.trim()).isPresent()) {
-            throw new CsvProcessingException("동일한 제목의 질문이 이미 존재합니다.", "DUPLICATE_TITLE");
-        }
+    private void checkDuplicateQuestionForUpdate(Long currentQuestionId, String newQuestion) {
+        questionRepository.findByQuestion(newQuestion).ifPresent(existing -> {
+            if (!existing.getId().equals(currentQuestionId)) {
+                throw new CsvProcessingException("동일한 질문이 이미 존재합니다.", "DUPLICATE_QUESTION");
+            }
+        });
     }
 
     private void applyPartialUpdate(Question question, QuestionUpdateRequest request, Long userId) {
-        if (request.getTitle() != null) {
-            question.setTitle(request.getTitle().trim());
+        if (request.getQuestion() != null) {
+            question.setQuestion(request.getQuestion().trim());
         }
-        if (request.getContent() != null) {
-            question.setContent(request.getContent());
+
+        if (request.getInterviewType() != null) {
+            question.setTitle(request.getInterviewType());
         }
-        if (request.getTags() != null) {
-            question.setTags(request.getTags());
-        }
+
         if (request.getDifficulty() != null) {
             question.setDifficulty(DIFFICULTY_MAPPING.get(request.getDifficulty().toUpperCase()));
         }
-        if (request.getAnswer() != null) {
-            question.setAnswer(request.getAnswer());
-        }
+
         if (request.getCategoryId() != null) {
             question.setCategoryId(request.getCategoryId());
         }
-        if (request.getIsPublic() != null) {
-            question.setIsPublic(request.getIsPublic());
-        }
+
         if (request.getYear() != null) {
             question.setYear(request.getYear());
         }
 
-        // Company 업데이트
-        if (request.getCompanyName() != null) {
-            Company company = companyRepository.findByName(request.getCompanyName())
-                    .orElseGet(() -> {
-                        Company newCompany = new Company();
-                        newCompany.setName(request.getCompanyName());
-                        newCompany.setCreatedAt(LocalDateTime.now());
-                        return companyRepository.save(newCompany);
-                    });
+        if (request.getCompanyName() != null && !request.getCompanyName().trim().isEmpty()) {
+            String companyName = request.getCompanyName().trim();
+            Company company = companyRepository.findByName(companyName)
+                    .orElseGet(() -> createNewCompany(companyName));
             question.setCompany(company);
         }
 
@@ -254,7 +238,7 @@ public class QuestionService {
                 question.getTitle(),
                 question.getQuestion(),
                 question.getContent(),
-                question.getTags(),
+                null,  // tags
                 question.getAnswer(),
                 question.getDifficulty(),
                 question.getYear(),

@@ -37,7 +37,9 @@ public class SecurityConfig {
                                 "/h2-console/**",
                                 "/rank/**",
                                 "/problem/**",
-                                "/feedback/**"
+                                "/feedback/**",
+                                "/search/**",
+                                "/question/**"
                         ).permitAll() // ✅ 인증 없이 접근 가능한 엔드포인트 추가
                         .anyRequest().authenticated()
                 )
@@ -57,7 +59,7 @@ public class SecurityConfig {
                 "http://localhost:3000"   // 개발용
         ));
 
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("Authorization"));
         configuration.setAllowCredentials(true);
