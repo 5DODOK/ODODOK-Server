@@ -49,6 +49,9 @@ public class Question {
     @Column(name = "is_public")
     private Boolean isPublic = true;
 
+    @Column(name = "interview_type", length = 20)
+    private String interviewType; // "TECHNICAL" 또는 "PERSONALITY"
+
     @Column(nullable = false, name = "created_by")
     private Long createdBy;
 
