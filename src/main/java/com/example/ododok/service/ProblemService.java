@@ -60,7 +60,7 @@ public class ProblemService {
         // 각 답변에 대해 면접 타입별로 처리
         for (ProblemSubmissionRequest.Answer answerReq : request.getAnswers()) {
             Question question = questionMap.get(answerReq.getQuestionId());
-            String interviewType = question.getInterviewType();
+            String interviewType = question.getTitle();
 
             UserAnswer userAnswer = new UserAnswer();
             userAnswer.setUser(user);
@@ -137,7 +137,7 @@ public class ProblemService {
     private String generateOverallCommentForSubmission(ProblemSubmissionRequest request, Map<Long, Question> questionMap) {
         // 면접 타입 확인
         String interviewType = questionMap.values().stream()
-                .map(Question::getInterviewType)
+                .map(Question::getTitle)
                 .filter(type -> type != null)
                 .findFirst()
                 .orElse("일반");
