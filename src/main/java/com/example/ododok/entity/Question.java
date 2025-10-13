@@ -34,7 +34,7 @@ public class Question {
 
     private String answer;
 
-    @Column(name = "question_year")
+    @Column(name = "year")
     private Integer year;
 
     @ManyToOne
