@@ -33,10 +33,10 @@ public class GeminiService {
 
         parts.put(new JSONObject().put("text",
                 String.format("""
-                        질문: %s
-                        답변: %s
-                        이 답변에 대해 2~3문장으로 간결하고 구체적인 피드백을 작성해주세요.
-                        좋은 점과 개선할 점을 함께 제시하세요.
+                        Q: %s
+                        A: %s
+
+                        2문장으로 피드백 작성(장점/개선점).
                         """, question, answer)
         ));
 
@@ -93,16 +93,11 @@ public class GeminiService {
 
         parts.put(new JSONObject().put("text",
                 String.format("""
-                        질문: %s
-                        답변: %s
+                        Q: %s
+                        A: %s
 
-                        기술 면접 평가 기준:
-                        - 논리성 (0~5점)
-                        - 정확성 (0~5점)
-                        - 명확성 (0~5점)
-
-                        JSON만 반환. 피드백은 1문장:
-                        {"logicScore":점수,"accuracyScore":점수,"clarityScore":점수,"feedback":"1문장"}
+                        논리성/정확성/명확성 각 0-5점 평가. JSON만 반환:
+                        {"logicScore":N,"accuracyScore":N,"clarityScore":N,"feedback":"1문장"}
                         """, question, answer)
         ));
 
@@ -160,12 +155,11 @@ public class GeminiService {
 
         parts.put(new JSONObject().put("text",
                 String.format("""
-                        질문: %s
-                        답변: %s
+                        Q: %s
+                        A: %s
 
-                        질문-답변 연관성 판단. 연관 있으면 10점, 없으면 0점.
-                        JSON만 반환:
-                        {"isRelevant":true/false,"pointsAwarded":10또는0,"feedback":"1문장"}
+                        연관성 판단(연관O:10점, 연관X:0점). JSON만 반환:
+                        {"isRelevant":true/false,"pointsAwarded":10or0,"feedback":"1문장"}
                         """, question, answer)
         ));
 
@@ -222,10 +216,10 @@ public class GeminiService {
 
         parts.put(new JSONObject().put("text",
                 String.format("""
-                        %s 면접 종합 평가.
+                        %s 면접 평가:
                         %s
 
-                        강점/개선점/학습방향을 2문장으로 간결하게.
+                        강점/개선점을 2문장으로.
                         """, interviewType, allAnswersSummary)
         ));
 
