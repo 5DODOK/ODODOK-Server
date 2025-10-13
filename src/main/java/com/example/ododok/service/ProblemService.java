@@ -7,11 +7,9 @@ import com.example.ododok.dto.TechnicalFeedbackResponse;
 import com.example.ododok.dto.PersonalityFeedbackResponse;
 import com.example.ododok.entity.Question;
 import com.example.ododok.entity.User;
-import com.example.ododok.entity.UserAnswer;
 import com.example.ododok.repository.QuestionRepository;
 import com.example.ododok.repository.UserRepository;
 import com.example.ododok.repository.CompanyRepository;
-import com.example.ododok.repository.UserAnswerRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -32,7 +29,6 @@ public class ProblemService {
     private final QuestionRepository questionRepository;
     private final UserRepository userRepository;
     private final CompanyRepository companyRepository;
-    private final UserAnswerRepository userAnswerRepository;
     private final GeminiService geminiService;
 
     @Transactional
@@ -57,26 +53,15 @@ public class ProblemService {
         int totalClarityScore = 0;
         int technicalCount = 0;
 
-        // 각 답변에 대해 면접 타입별로 처리
+        // 각 답변에 대해 면접 타입별로 처리 (저장하지 않고 즉시 채점만)
         for (ProblemSubmissionRequest.Answer answerReq : request.getAnswers()) {
             Question question = questionMap.get(answerReq.getQuestionId());
             String interviewType = question.getTitle();
-
-            UserAnswer userAnswer = new UserAnswer();
-            userAnswer.setUser(user);
-            userAnswer.setQuestion(question);
-            userAnswer.setAnswer(answerReq.getAnswer());
-            userAnswer.setSubmittedAt(LocalDateTime.now());
-            userAnswer.setTimeSpent(answerReq.getTimeSpent());
 
             if ("TECHNICAL".equals(interviewType)) {
                 // 기술 면접: 논리성, 정확성, 명확성 점수 계산
                 TechnicalFeedbackResponse feedback = geminiService.generateTechnicalFeedback(
                         question.getQuestion(), answerReq.getAnswer());
-
-                userAnswer.setLogicScore(feedback.getLogicScore());
-                userAnswer.setAccuracyScore(feedback.getAccuracyScore());
-                userAnswer.setClarityScore(feedback.getClarityScore());
 
                 // 점수 합산
                 totalLogicScore += feedback.getLogicScore();
@@ -85,24 +70,17 @@ public class ProblemService {
                 technicalCount++;
 
                 // 기술 면접은 점수로만 평가, 포인트 미지급
-                userAnswer.setPointsEarned(0);
 
             } else if ("PERSONALITY".equals(interviewType)) {
                 // 인성 면접: 연관성 판단 및 포인트 지급
                 PersonalityFeedbackResponse feedback = geminiService.generatePersonalityFeedback(
                         question.getQuestion(), answerReq.getAnswer());
 
-                userAnswer.setIsRelevant(feedback.getIsRelevant());
-                userAnswer.setPointsEarned(feedback.getPointsAwarded());
-
                 totalPointsEarned += feedback.getPointsAwarded();
             } else {
                 // 면접 타입이 지정되지 않은 경우 기본 100포인트 지급
-                userAnswer.setPointsEarned(100);
                 totalPointsEarned += 100;
             }
-
-            userAnswerRepository.save(userAnswer);
         }
 
         // 유저 포인트 업데이트 (인성 면접 포인트만)
