@@ -124,8 +124,11 @@ public class GeminiService {
                     .getString("text")
                     .trim();
 
+            // JSON 추출 (마크다운 코드블록 제거)
+            String jsonText = extractJsonFromResponse(responseText);
+
             // JSON 파싱
-            JSONObject result = new JSONObject(responseText);
+            JSONObject result = new JSONObject(jsonText);
             return new TechnicalFeedbackResponse(
                     result.getInt("logicScore"),
                     result.getInt("accuracyScore"),
@@ -186,8 +189,11 @@ public class GeminiService {
                     .getString("text")
                     .trim();
 
+            // JSON 추출 (마크다운 코드블록 제거)
+            String jsonText = extractJsonFromResponse(responseText);
+
             // JSON 파싱
-            JSONObject result = new JSONObject(responseText);
+            JSONObject result = new JSONObject(jsonText);
             return new PersonalityFeedbackResponse(
                     result.getBoolean("isRelevant"),
                     result.getString("feedback"),
@@ -198,6 +204,41 @@ public class GeminiService {
             log.error("인성 면접 피드백 생성 중 오류 발생", e);
             return new PersonalityFeedbackResponse(false, "피드백 생성 실패: " + e.getMessage(), 0);
         }
+    }
+
+    /**
+     * Gemini 응답에서 JSON 추출 (마크다운 코드블록 제거)
+     */
+    private String extractJsonFromResponse(String responseText) {
+        if (responseText == null || responseText.isEmpty()) {
+            throw new RuntimeException("Empty response from Gemini");
+        }
+
+        // 마크다운 코드블록 제거 (```json ... ``` 또는 ``` ... ```)
+        String cleaned = responseText.trim();
+        if (cleaned.startsWith("```")) {
+            // 첫 번째 줄 제거 (```json 또는 ```)
+            int firstNewline = cleaned.indexOf('\n');
+            if (firstNewline != -1) {
+                cleaned = cleaned.substring(firstNewline + 1);
+            }
+            // 마지막 ``` 제거
+            if (cleaned.endsWith("```")) {
+                cleaned = cleaned.substring(0, cleaned.length() - 3);
+            }
+            cleaned = cleaned.trim();
+        }
+
+        // JSON 시작/끝 찾기
+        int jsonStart = cleaned.indexOf('{');
+        int jsonEnd = cleaned.lastIndexOf('}');
+
+        if (jsonStart == -1 || jsonEnd == -1 || jsonStart > jsonEnd) {
+            log.error("JSON을 찾을 수 없음. 응답 내용: {}", responseText);
+            throw new RuntimeException("Invalid JSON response from Gemini");
+        }
+
+        return cleaned.substring(jsonStart, jsonEnd + 1);
     }
 
     /**

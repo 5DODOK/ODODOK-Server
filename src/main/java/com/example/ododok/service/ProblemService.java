@@ -51,14 +51,15 @@ public class ProblemService {
         int totalLogicScore = 0;
         int totalAccuracyScore = 0;
         int totalClarityScore = 0;
-        int technicalCount = 0;
+        int answerCount = request.getAnswers().size();
 
         // 각 답변에 대해 면접 타입별로 처리 (저장하지 않고 즉시 채점만)
         for (ProblemSubmissionRequest.Answer answerReq : request.getAnswers()) {
             Question question = questionMap.get(answerReq.getQuestionId());
             String interviewType = question.getTitle();
 
-            if ("TECHNICAL".equals(interviewType)) {
+            // 기술면접: "TECHNICAL" 또는 "기술면접"
+            if ("TECHNICAL".equals(interviewType) || "기술면접".equals(interviewType)) {
                 // 기술 면접: 논리성, 정확성, 명확성 점수 계산
                 TechnicalFeedbackResponse feedback = geminiService.generateTechnicalFeedback(
                         question.getQuestion(), answerReq.getAnswer());
@@ -67,19 +68,31 @@ public class ProblemService {
                 totalLogicScore += feedback.getLogicScore();
                 totalAccuracyScore += feedback.getAccuracyScore();
                 totalClarityScore += feedback.getClarityScore();
-                technicalCount++;
 
-                // 기술 면접은 점수로만 평가, 포인트 미지급
+                // 기술 면접도 포인트 지급: 평균 점수 * 10
+                int avgScore = (feedback.getLogicScore() + feedback.getAccuracyScore() + feedback.getClarityScore()) / 3;
+                totalPointsEarned += avgScore * 10;
 
-            } else if ("PERSONALITY".equals(interviewType)) {
+            } else if ("PERSONALITY".equals(interviewType) || "인성면접".equals(interviewType)) {
                 // 인성 면접: 연관성 판단 및 포인트 지급
                 PersonalityFeedbackResponse feedback = geminiService.generatePersonalityFeedback(
                         question.getQuestion(), answerReq.getAnswer());
 
                 totalPointsEarned += feedback.getPointsAwarded();
+
+                // 인성 면접도 점수 부여: 포인트를 점수로 환산 (포인트 / 10)
+                int score = feedback.getPointsAwarded() / 10;
+                totalLogicScore += score;
+                totalAccuracyScore += score;
+                totalClarityScore += score;
+
             } else {
-                // 면접 타입이 지정되지 않은 경우 기본 100포인트 지급
+                // 면접 타입이 지정되지 않은 경우 기본값 지급
+                log.warn("Unknown interview type: {}. Awarding default values.", interviewType);
                 totalPointsEarned += 100;
+                totalLogicScore += 10;
+                totalAccuracyScore += 10;
+                totalClarityScore += 10;
             }
         }
 
@@ -100,12 +113,18 @@ public class ProblemService {
         // 종합 코멘트 생성 (모든 답변 완료 시)
         String overallComment = generateOverallCommentForSubmission(request, questionMap);
 
+        // 평균 점수 계산
+        Integer averageScore = answerCount > 0 ? (totalLogicScore + totalAccuracyScore + totalClarityScore) / (answerCount * 3) : null;
+        Integer avgLogicScore = answerCount > 0 ? totalLogicScore / answerCount : null;
+        Integer avgAccuracyScore = answerCount > 0 ? totalAccuracyScore / answerCount : null;
+        Integer avgClarityScore = answerCount > 0 ? totalClarityScore / answerCount : null;
+
         return new ProblemSubmissionResponse(
-                "제출 완료! " + (totalPointsEarned > 0 ? "포인트가 지급되었습니다 🎉" : "평가가 완료되었습니다!"),
-                technicalCount > 0 ? (totalLogicScore + totalAccuracyScore + totalClarityScore) / (technicalCount * 3) : null,
-                technicalCount > 0 ? totalLogicScore / technicalCount : null,
-                technicalCount > 0 ? totalAccuracyScore / technicalCount : null,
-                technicalCount > 0 ? totalClarityScore / technicalCount : null,
+                "제출 완료! 포인트가 지급되었습니다 🎉",
+                averageScore,
+                avgLogicScore,
+                avgAccuracyScore,
+                avgClarityScore,
                 totalPointsEarned,
                 rank,
                 overallComment
