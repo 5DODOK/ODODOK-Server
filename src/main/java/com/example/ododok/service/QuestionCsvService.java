@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStreamReader;
@@ -57,6 +58,7 @@ public class QuestionCsvService {
             "HARD", 3
     );
 
+    @Transactional
     public CsvUploadResponse processCsvFile(MultipartFile file, boolean dryRun, Long userId) {
         validateUser(userId);
         validateFile(file);
@@ -210,6 +212,7 @@ public class QuestionCsvService {
         Question question = new Question();
         question.setQuestion(row.getQuestion().trim());
         question.setCreatedBy(userId);
+        question.setIsPublic(true); // CSV로 업로드된 질문은 기본적으로 공개
 
         // ✅ title 처리 추가
         if (row.getTitle() != null && !row.getTitle().trim().isEmpty())
