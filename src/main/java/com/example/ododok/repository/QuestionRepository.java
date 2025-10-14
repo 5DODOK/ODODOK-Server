@@ -141,4 +141,7 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
 
     @Query("SELECT DISTINCT q.company.name FROM Question q WHERE q.company IS NOT NULL")
     java.util.List<String> findDistinctCompanyNames();
+
+    // CSV 업로드 성능 최적화를 위한 배치 조회
+    List<Question> findAllByQuestionIn(List<String> questions);
 }

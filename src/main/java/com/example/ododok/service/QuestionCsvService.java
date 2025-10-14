@@ -146,18 +146,57 @@ public class QuestionCsvService {
         List<CsvUploadResponse.ValidationError> errors = new ArrayList<>();
         int created = 0, updated = 0, skipped = 0;
 
+        // 성능 최적화: 회사/카테고리 캐싱
+        Map<String, Company> companyCache = new HashMap<>();
+        Map<String, Long> categoryCache = new HashMap<>();
+
+        // 성능 최적화: 기존 질문 미리 조회 (upsert-key가 question일 때)
+        Map<String, Question> existingQuestionsMap = new HashMap<>();
+        if (!dryRun && "question".equals(upsertKey)) {
+            List<String> questionTexts = rows.stream()
+                    .map(QuestionCsvRow::getQuestion)
+                    .filter(q -> q != null && !q.trim().isEmpty())
+                    .map(String::trim)
+                    .toList();
+
+            if (!questionTexts.isEmpty()) {
+                List<Question> existingQuestions = questionRepository.findAllByQuestionIn(questionTexts);
+                for (Question q : existingQuestions) {
+                    existingQuestionsMap.put(q.getQuestion(), q);
+                }
+            }
+        }
+
+        List<Question> questionsToSave = new ArrayList<>();
+
         for (int i = 0; i < rows.size(); i++) {
             int rowNumber = i + 2;
             try {
                 QuestionCsvRow row = rows.get(i);
                 validateRow(row, rowNumber);
-                Question question = convertToQuestion(row, userId);
+                Question question = convertToQuestion(row, userId, companyCache, categoryCache);
 
                 if (!dryRun) {
-                    boolean isUpdate = saveOrUpdateQuestion(question);
-                    if (isUpdate) updated++;
-                    else created++;
-                } else created++;
+                    Question existingQuestion = existingQuestionsMap.get(question.getQuestion());
+                    if (existingQuestion != null) {
+                        // 업데이트
+                        existingQuestion.setQuestion(question.getQuestion());
+                        existingQuestion.setTitle(question.getTitle());
+                        existingQuestion.setDifficulty(question.getDifficulty());
+                        existingQuestion.setYear(question.getYear());
+                        existingQuestion.setCompany(question.getCompany());
+                        existingQuestion.setCategoryId(question.getCategoryId());
+                        existingQuestion.setIsPublic(question.getIsPublic());
+                        questionsToSave.add(existingQuestion);
+                        updated++;
+                    } else {
+                        // 생성
+                        questionsToSave.add(question);
+                        created++;
+                    }
+                } else {
+                    created++;
+                }
             } catch (CsvProcessingException e) {
                 errors.add(new CsvUploadResponse.ValidationError(rowNumber, e.getErrorCode(), e.getField(), e.getMessage()));
                 skipped++;
@@ -166,6 +205,11 @@ public class QuestionCsvService {
                 errors.add(new CsvUploadResponse.ValidationError(rowNumber, "PROCESSING_ERROR", null, "행 처리 중 오류"));
                 skipped++;
             }
+        }
+
+        // 배치로 한 번에 저장
+        if (!dryRun && !questionsToSave.isEmpty()) {
+            questionRepository.saveAll(questionsToSave);
         }
 
         return new CsvUploadResponse(
@@ -194,21 +238,11 @@ public class QuestionCsvService {
                 throw new CsvProcessingException("연도는 정수여야 합니다.", "INVALID_YEAR_FORMAT", "year");
             }
         }
-
-        validateForeignKeys(row);
     }
 
-    private void validateForeignKeys(QuestionCsvRow row) {
-        if (row.getCompanyName() != null && !row.getCompanyName().trim().isEmpty())
-            companyRepository.findByName(row.getCompanyName().trim())
-                    .orElseThrow(() -> new CsvProcessingException("해당 회사명을 가진 레코드를 찾을 수 없습니다.", "FK_NOT_FOUND", "company_name"));
-
-        if (row.getCategoryName() != null && !row.getCategoryName().trim().isEmpty())
-            categoryRepository.findByName(row.getCategoryName().trim())
-                    .orElseThrow(() -> new CsvProcessingException("해당 카테고리명을 가진 레코드를 찾을 수 없습니다.", "FK_NOT_FOUND", "category_name"));
-    }
-
-    private Question convertToQuestion(QuestionCsvRow row, Long userId) {
+    private Question convertToQuestion(QuestionCsvRow row, Long userId,
+                                       Map<String, Company> companyCache,
+                                       Map<String, Long> categoryCache) {
         Question question = new Question();
         question.setQuestion(row.getQuestion().trim());
         question.setCreatedBy(userId);
@@ -230,48 +264,28 @@ public class QuestionCsvService {
         if (row.getYear() != null && !row.getYear().trim().isEmpty())
             question.setYear(Integer.parseInt(row.getYear().trim()));
 
-        // 회사
+        // 회사 - 캐시 사용
         if (row.getCompanyName() != null && !row.getCompanyName().trim().isEmpty()) {
-            Company company = companyRepository.findByName(row.getCompanyName().trim())
-                    .orElseThrow(() -> new CsvProcessingException("해당 회사를 찾을 수 없습니다.", "COMPANY_NOT_FOUND", "company_name"));
+            String companyName = row.getCompanyName().trim();
+            Company company = companyCache.computeIfAbsent(companyName, name ->
+                companyRepository.findByName(name)
+                    .orElseThrow(() -> new CsvProcessingException("해당 회사를 찾을 수 없습니다.", "COMPANY_NOT_FOUND", "company_name"))
+            );
             question.setCompany(company);
         }
 
-        // 카테고리
+        // 카테고리 - 캐시 사용
         if (row.getCategoryName() != null && !row.getCategoryName().trim().isEmpty()) {
-            Long categoryId = categoryRepository.findByName(row.getCategoryName().trim())
-                    .map(c -> c.getId()).orElse(null);
+            String categoryName = row.getCategoryName().trim();
+            Long categoryId = categoryCache.computeIfAbsent(categoryName, name ->
+                categoryRepository.findByName(name)
+                    .map(c -> c.getId())
+                    .orElseThrow(() -> new CsvProcessingException("해당 카테고리를 찾을 수 없습니다.", "CATEGORY_NOT_FOUND", "category_name"))
+            );
             question.setCategoryId(categoryId);
         }
 
         return question;
-    }
-
-    private boolean saveOrUpdateQuestion(Question question) {
-        Optional<Question> existing;
-        if ("question".equals(upsertKey)) {
-            existing = questionRepository.findByQuestion(question.getQuestion());
-        } else {
-            String companyName = question.getCompany() != null ? question.getCompany().getName() : null;
-            existing = questionRepository.findByQuestionAndYearAndCompanyNameAndCategoryId(
-                    question.getQuestion(), question.getYear(), companyName, question.getCategoryId()
-            );
-        }
-
-        if (existing.isPresent()) {
-            Question existingQuestion = existing.get();
-            existingQuestion.setQuestion(question.getQuestion());
-            existingQuestion.setTitle(question.getTitle()); // ✅ title 업데이트 추가
-            existingQuestion.setDifficulty(question.getDifficulty());
-            existingQuestion.setYear(question.getYear());
-            existingQuestion.setCompany(question.getCompany());
-            existingQuestion.setCategoryId(question.getCategoryId());
-            questionRepository.save(existingQuestion);
-            return true;
-        } else {
-            questionRepository.save(question);
-            return false;
-        }
     }
 
     private boolean isNumeric(String str) {
